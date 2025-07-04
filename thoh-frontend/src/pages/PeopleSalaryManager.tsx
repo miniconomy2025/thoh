@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
@@ -15,6 +15,9 @@ import {
 import { Checkbox } from "../components/ui/checkbox"
 import { Plus, Edit, Trash2 } from "lucide-react"
 import { SidebarTrigger } from "../components/ui/sidebar"
+import { ModeToggle } from "../components/mode-toggle"
+import { Paginator } from "../components/ui/paginator"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
 
 interface Employee {
   id: string
@@ -27,36 +30,9 @@ interface Employee {
 }
 
 export function PeopleSalaryManager() {
-  const [employees, setEmployees] = useState<Employee[]>([
-    {
-      id: "1",
-      name: "John Doe",
-      phonesAmount: 2,
-      bankBalance: 15000,
-      monthlySalary: 5500,
-      currentPhone: "iPhone 14",
-      deceased: false,
-    },
-    {
-      id: "2",
-      name: "Jane Smith",
-      phonesAmount: 1,
-      bankBalance: 22000,
-      monthlySalary: 6200,
-      currentPhone: "Samsung Galaxy S23",
-      deceased: false,
-    },
-    {
-      id: "3",
-      name: "Bob Johnson",
-      phonesAmount: 3,
-      bankBalance: 8500,
-      monthlySalary: 4800,
-      currentPhone: "Google Pixel 7",
-      deceased: true,
-    },
-  ])
-
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
   const [formData, setFormData] = useState({
@@ -67,6 +43,18 @@ export function PeopleSalaryManager() {
     currentPhone: "",
     deceased: false,
   })
+
+  const createEmployees = (count: number = 100): Employee[] => {
+    return Array.from({ length: count }, (_, index) => ({
+      id: (index + 1).toString(),
+      name: `Employee ${index + 1}`,
+      phonesAmount: Math.floor(Math.random() * 10) + 1,
+      bankBalance: Math.floor(Math.random() * 10000) + 1,
+      monthlySalary: Math.floor(Math.random() * 10000) + 1,
+      currentPhone: `Phone ${index + 1}`,
+      deceased: Math.random() < 0.5,
+    }))
+  }
 
   const handleAddEmployee = () => {
     setEditingEmployee(null)
@@ -125,12 +113,17 @@ export function PeopleSalaryManager() {
     }).format(amount)
   }
 
+  useEffect(() => {
+    setEmployees(createEmployees())
+  }, [])
+
   return (
     <>
       <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
           <div className="h-4 w-px bg-sidebar-border mx-2" />
-          <h1 className="text-lg font-semibold">People and salary manager</h1>
+          <h1 className="text-lg font-semibold grow">People and salary manager</h1>
+          <ModeToggle />
       </header>
       <div className="p-6 w-full mx-auto">
         <div className="flex justify-between items-center mb-6">
@@ -175,7 +168,7 @@ export function PeopleSalaryManager() {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="balance" className="text-right">
-                    Bank Balance
+                    Balance
                   </Label>
                   <Input
                     id="balance"
@@ -188,7 +181,7 @@ export function PeopleSalaryManager() {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="salary" className="text-right">
-                    Monthly Salary
+                    Salary
                   </Label>
                   <Input
                     id="salary"
@@ -201,7 +194,7 @@ export function PeopleSalaryManager() {
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="phone" className="text-right">
-                    Current Phone
+                    Phone
                   </Label>
                   <Input
                     id="phone"
@@ -231,7 +224,7 @@ export function PeopleSalaryManager() {
           </Dialog>
         </div>
 
-        <div className="border rounded-lg">
+        <div className="border rounded-lg mb-6">
           <Table>
             <TableHeader>
               <TableRow>
@@ -252,7 +245,7 @@ export function PeopleSalaryManager() {
                   </TableCell>
                 </TableRow>
               ) : (
-                employees.map((employee) => (
+                employees.slice((page - 1) * pageSize, page * pageSize).map((employee) => (
                   <TableRow key={employee.id} className={employee.deceased ? "opacity-60" : ""}>
                     <TableCell className="font-medium">{employee.name}</TableCell>
                     <TableCell className="text-center">{employee.phonesAmount}</TableCell>
@@ -277,6 +270,23 @@ export function PeopleSalaryManager() {
               )}
             </TableBody>
           </Table>
+        </div>
+
+        <div className="w-full flex items-center justify-between">
+          <Select value={pageSize.toString()} onValueChange={(value) => {
+              setPage(1)
+              setPageSize(Number(value))
+            }}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder={pageSize} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="50">50</SelectItem>
+              <SelectItem value="25">25</SelectItem>
+              <SelectItem value="10">10</SelectItem>
+            </SelectContent>
+          </Select>
+          <Paginator page={page} setPage={setPage} pageSize={pageSize} dataSetLength={employees.length} />
         </div>
       </div>
     </>

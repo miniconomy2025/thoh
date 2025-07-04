@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import {
   SidebarTrigger,
 } from "../components/ui/sidebar"
+import { ModeToggle } from "../components/mode-toggle"
 
 export function AdminControlPanel() {
   const [isRunning, setIsRunning] = useState(false)
@@ -37,7 +38,8 @@ export function AdminControlPanel() {
         <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
             <SidebarTrigger className="-ml-1" />
             <div className="h-4 w-px bg-sidebar-border mx-2" />
-            <h1 className="text-lg font-semibold">Admin Control Panel</h1>
+            <h1 className="text-lg font-semibold grow">Admin Control Panel</h1>
+            <ModeToggle />
         </header>
         <div className="flex-1 p-8">
             <div className="max-w-2xl mx-auto">

@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Badge } from "../components/ui/badge"
 import { Search, Filter } from "lucide-react"
 import { SidebarTrigger } from "../components/ui/sidebar"
+import { ModeToggle } from "../components/mode-toggle"
 
 interface InventoryItem {
   id: string
@@ -83,7 +84,8 @@ export function RawMaterialsEquipment() {
       <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
         <SidebarTrigger className="-ml-1" />
         <div className="h-4 w-px bg-sidebar-border mx-2" />
-        <h1 className="text-lg font-semibold">People and salary manager</h1>
+        <h1 className="text-lg font-semibold grow">People and salary manager</h1>
+        <ModeToggle />
       </header>
       <div className="p-6 w-full mx-auto">
         <h1 className="text-3xl font-bold text-center mb-8">Raw Materials & Equipment</h1>

@@ -7,6 +7,7 @@ import { ScrollArea } from "../components/ui/scroll-area"
 import { Badge } from "../components/ui/badge"
 import { TrendingUp, TrendingDown, Activity, Clock } from "lucide-react"
 import { SidebarTrigger } from "../components/ui/sidebar"
+import { ModeToggle } from "../components/mode-toggle"
 
 interface Entity {
   id: string
@@ -89,7 +90,8 @@ export function EconomicFlowReporting() {
       <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
           <div className="h-4 w-px bg-sidebar-border mx-2" />
-          <h1 className="text-lg font-semibold">Economic Flow Reporting</h1>
+          <h1 className="text-lg font-semibold grow">Economic Flow Reporting</h1>
+          <ModeToggle />
       </header>
       <div className="p-6 space-y-6">
         <h1 className="text-3xl font-bold text-center mb-8">Economic Flow Reporting</h1>
