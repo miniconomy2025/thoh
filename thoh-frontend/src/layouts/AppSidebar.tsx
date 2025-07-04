@@ -8,41 +8,52 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "../components/ui/sidebar";
+import thoh from "../assets/thoh.svg";
 
 import { NavLink } from "react-router-dom";
-import { Home, Settings, Users, BarChart3 } from "lucide-react";
+import { Home, Users, BarChart3, Drill } from "lucide-react";
 
 const menuItems = [
   {
     title: "Dashboard",
     icon: Home,
-    url: "/admin", // route for AdminControlPanel
+    url: "/admin",
   },
   {
-    title: "Users",
+    title: "People",
     icon: Users,
-    url: "/users", // you can define this later
+    url: "/users",
   },
   {
-    title: "Analytics",
+    title: "Economic Flow",
     icon: BarChart3,
-    url: "/salaries", // route for PeopleSalaryManager
+    url: "/flow",
+  },
+  {
+    title: "Raw Materials",
+    icon: Drill,
+    url: "/equipment",
   },
 ];
 
 export function AppSidebar() {
+  const { open } = useSidebar();
+  
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center gap-2 px-4 py-2">
+      <SidebarHeader className="border-b border-sidebar-border h-16">
+        <div className="flex items-center gap-2 py-2">
           <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-            <Settings className="size-4" />
+            <img src={thoh} alt="THOH Logo" className="size-4" />
           </div>
-          <div className="flex flex-col gap-0.5 leading-none">
-            <span className="font-semibold">Admin Panel</span>
-            <span className="text-xs text-sidebar-foreground/70">Control Center</span>
-          </div>
+          {open &&
+            <div className="flex flex-col gap-0.5 leading-none">
+              <span className="font-semibold">THOH</span>
+              <span className="text-xs text-sidebar-foreground/70">Control Center</span>
+            </div>
+            }
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -57,7 +68,7 @@ export function AppSidebar() {
                       to={item.url}
                       className={({ isActive }) =>
                         `flex items-center gap-2 w-full ${
-                          isActive ? "text-blue-600 font-medium" : ""
+                          isActive ? "border-e-slate-950" : ""
                         }`
                       }
                     >
