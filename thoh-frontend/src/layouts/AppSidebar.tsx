@@ -10,10 +10,10 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "../components/ui/sidebar";
-import thoh from "../assets/thoh.svg";
 
-import { NavLink } from "react-router-dom";
-import { Home, Users, BarChart3, Drill } from "lucide-react";
+import { NavLink, useLocation } from "react-router-dom";
+import { Home, Users, BarChart3, Drill, Server } from "lucide-react";
+import { useEffect, useState } from "react";
 
 const menuItems = [
   {
@@ -40,13 +40,19 @@ const menuItems = [
 
 export function AppSidebar() {
   const { open } = useSidebar();
+  const location = useLocation();
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
+
+  useEffect(() => {
+    setCurrentPath(location.pathname);
+  }, [location]);
   
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border h-16">
         <div className="flex items-center gap-2 py-2">
-          <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-            <img src={thoh} alt="THOH Logo" className="size-4" />
+          <div className="flex aspect-square size-8 items-center justify-center rounded-lg text-sidebar-primary-foreground">
+            <Server className="size-4" />
           </div>
           {open &&
             <div className="flex flex-col gap-0.5 leading-none">
@@ -63,7 +69,11 @@ export function AppSidebar() {
             <SidebarMenu>
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
+                  <SidebarMenuButton 
+                    asChild 
+                    className={currentPath === item.url ? "bg-white text-black" : ""}
+                    variant={currentPath === item.url ? "outline" : "default"} 
+                    tooltip={item.title}>
                     <NavLink
                       to={item.url}
                       className={({ isActive }) =>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "../components/ui/button"
 import { Input } from "../components/ui/input"
 import { Label } from "../components/ui/label"
@@ -13,13 +13,24 @@ import {
   DialogTrigger,
 } from "../components/ui/dialog"
 import { Checkbox } from "../components/ui/checkbox"
-import { Plus, Edit, Trash2 } from "lucide-react"
+import { Plus, Edit, Trash2, Search } from "lucide-react"
 import { SidebarTrigger } from "../components/ui/sidebar"
 import { ModeToggle } from "../components/mode-toggle"
 import { Paginator } from "../components/ui/paginator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "../components/ui/alert-dialog"
 
-interface Employee {
+interface Person {
   id: string
   name: string
   phonesAmount: number
@@ -30,11 +41,12 @@ interface Employee {
 }
 
 export function PeopleSalaryManager() {
-  const [employees, setEmployees] = useState<Employee[]>([])
+  const [searchTerm, setSearchTerm] = useState("")
+  const [people, setPeople] = useState<Person[]>([])
   const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
+  const [pageSize, setPageSize] = useState(5)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
+  const [editingPerson, setEditingPerson] = useState<Person | null>(null)
   const [formData, setFormData] = useState({
     name: "",
     phonesAmount: "",
@@ -44,20 +56,37 @@ export function PeopleSalaryManager() {
     deceased: false,
   })
 
-  const createEmployees = (count: number = 100): Employee[] => {
+  function generateRandomName() {
+  const firstNames = [
+    "Alex", "Jordan", "Taylor", "Casey", "Riley", "Scott", "Luke", "John", "Mike",
+    "Morgan", "Jamie", "Avery", "Drew", "Skyler"
+  ];
+
+  const lastNames = [
+    "Smith", "Johnson", "Brown", "Taylor", "Anderson",
+    "Thomas", "Jackson", "White", "Harris", "Martin"
+  ];
+
+  const randomFirst = firstNames[Math.floor(Math.random() * firstNames.length)];
+  const randomLast = lastNames[Math.floor(Math.random() * lastNames.length)];
+
+  return `${randomFirst} ${randomLast}`;
+}
+
+  const createPersons = (count: number = 100): Person[] => {
     return Array.from({ length: count }, (_, index) => ({
       id: (index + 1).toString(),
-      name: `Employee ${index + 1}`,
+      name: generateRandomName(),
       phonesAmount: Math.floor(Math.random() * 10) + 1,
       bankBalance: Math.floor(Math.random() * 10000) + 1,
-      monthlySalary: Math.floor(Math.random() * 10000) + 1,
+      monthlySalary: Math.floor(Math.random() * 100000) + 1,
       currentPhone: `Phone ${index + 1}`,
       deceased: Math.random() < 0.5,
     }))
   }
 
-  const handleAddEmployee = () => {
-    setEditingEmployee(null)
+  const handleAddPerson = () => {
+    setEditingPerson(null)
     setFormData({
       name: "",
       phonesAmount: "",
@@ -69,26 +98,26 @@ export function PeopleSalaryManager() {
     setIsDialogOpen(true)
   }
 
-  const handleEditEmployee = (employee: Employee) => {
-    setEditingEmployee(employee)
+  const handleEditPerson = (person: Person) => {
+    setEditingPerson(person)
     setFormData({
-      name: employee.name,
-      phonesAmount: employee.phonesAmount.toString(),
-      bankBalance: employee.bankBalance.toString(),
-      monthlySalary: employee.monthlySalary.toString(),
-      currentPhone: employee.currentPhone,
-      deceased: employee.deceased,
+      name: person.name,
+      phonesAmount: person.phonesAmount.toString(),
+      bankBalance: person.bankBalance.toString(),
+      monthlySalary: person.monthlySalary.toString(),
+      currentPhone: person.currentPhone,
+      deceased: person.deceased,
     })
     setIsDialogOpen(true)
   }
 
-  const handleDeleteEmployee = (id: string) => {
-    setEmployees(employees.filter((emp) => emp.id !== id))
+  const handleDeletePerson = (id: string) => {
+    setPeople(people.filter((person) => person.id !== id))
   }
 
   const handleSubmit = () => {
-    const newEmployee: Employee = {
-      id: editingEmployee?.id || Date.now().toString(),
+    const newPerson: Person = {
+      id: editingPerson?.id || Date.now().toString(),
       name: formData.name,
       phonesAmount: Number.parseInt(formData.phonesAmount) || 0,
       bankBalance: Number.parseFloat(formData.bankBalance) || 0,
@@ -97,25 +126,35 @@ export function PeopleSalaryManager() {
       deceased: formData.deceased,
     }
 
-    if (editingEmployee) {
-      setEmployees(employees.map((emp) => (emp.id === editingEmployee.id ? newEmployee : emp)))
+    if (editingPerson) {
+      setPeople(people.map((person) => (person.id === editingPerson.id ? newPerson : person)))
     } else {
-      setEmployees([...employees, newEmployee])
+      setPeople([...people, newPerson])
     }
 
     setIsDialogOpen(false)
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat("en-ZA", {
       style: "currency",
-      currency: "USD",
+      currency: "ZAR",
     }).format(amount)
   }
 
   useEffect(() => {
-    setEmployees(createEmployees())
+    setPeople(createPersons())
   }, [])
+
+  const searchedPeople = useMemo(() => {
+    return people.filter((person) => person.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  }, [searchTerm, people])
+
+  const paginatedPeople = useMemo(() => {
+    const startIndex = (page - 1) * pageSize
+    const endIndex = startIndex + pageSize
+    return searchedPeople.slice(startIndex, endIndex)
+  }, [searchedPeople, page, pageSize])
 
   return (
     <>
@@ -126,20 +165,31 @@ export function PeopleSalaryManager() {
           <ModeToggle />
       </header>
       <div className="p-6 w-full mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-center flex-1">People and salary manager</h1>
+        <h1 className="text-3xl font-bold text-center flex-1 mb-6">People and salary manager</h1>
+
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={handleAddEmployee} className="ml-4">
+              <Button onClick={handleAddPerson} className="ml-4">
                 <Plus className="w-4 h-4 mr-2" />
-                Add Employee
+                Add Person
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>{editingEmployee ? "Edit Employee" : "Add New Employee"}</DialogTitle>
+                <DialogTitle>{editingPerson ? "Edit Person" : "Add New Person"}</DialogTitle>
                 <DialogDescription>
-                  {editingEmployee ? "Update the employee information below." : "Enter the details for the new employee."}
+                  {editingPerson ? "Update the person information below." : "Enter the details for the new person."}
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -217,7 +267,7 @@ export function PeopleSalaryManager() {
               </div>
               <DialogFooter>
                 <Button type="submit" onClick={handleSubmit}>
-                  {editingEmployee ? "Update" : "Add"} Employee
+                  {editingPerson ? "Update" : "Add"} Person
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -238,31 +288,47 @@ export function PeopleSalaryManager() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {employees.length === 0 ? (
+              {people.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    No employees found. Click "Add Employee" to get started.
+                    No person found. Click "Add Person" to get started.
                   </TableCell>
                 </TableRow>
               ) : (
-                employees.slice((page - 1) * pageSize, page * pageSize).map((employee) => (
-                  <TableRow key={employee.id} className={employee.deceased ? "opacity-60" : ""}>
-                    <TableCell className="font-medium">{employee.name}</TableCell>
-                    <TableCell className="text-center">{employee.phonesAmount}</TableCell>
-                    <TableCell className="text-center">{formatCurrency(employee.bankBalance)}</TableCell>
-                    <TableCell className="text-center">{formatCurrency(employee.monthlySalary)}</TableCell>
-                    <TableCell className="text-center">{employee.currentPhone}</TableCell>
+                paginatedPeople.map((person) => (
+                  <TableRow key={person.id} className={person.deceased ? "opacity-60" : ""}>
+                    <TableCell className="font-medium">{person.name}</TableCell>
+                    <TableCell className="text-center">{person.phonesAmount}</TableCell>
+                    <TableCell className="text-center">{formatCurrency(person.bankBalance)}</TableCell>
+                    <TableCell className="text-center">{formatCurrency(person.monthlySalary)}</TableCell>
+                    <TableCell className="text-center">{person.currentPhone}</TableCell>
                     <TableCell className="text-center">
-                      <Checkbox checked={employee.deceased} disabled />
+                      <Checkbox checked={person.deceased} disabled />
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex justify-center gap-2">
-                        <Button variant="outline" size="sm" onClick={() => handleEditEmployee(employee)}>
+                        <Button variant="outline" size="sm" onClick={() => handleEditPerson(person)}>
                           <Edit className="w-4 h-4" />
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleDeleteEmployee(employee.id)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger>
+                            <Button variant="outline" size="sm">
+                              <Trash2 className="w-4 h-4" />
+                          </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This action cannot be undone. This will permanently delete {person.name} from our servers.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction className="bg-red-600" onClick={() => handleDeletePerson(person.id)}>Yes, delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -284,9 +350,10 @@ export function PeopleSalaryManager() {
               <SelectItem value="50">50</SelectItem>
               <SelectItem value="25">25</SelectItem>
               <SelectItem value="10">10</SelectItem>
+              <SelectItem value="5">5</SelectItem>
             </SelectContent>
           </Select>
-          <Paginator page={page} setPage={setPage} pageSize={pageSize} dataSetLength={employees.length} />
+          <Paginator page={page} setPage={setPage} pageSize={pageSize} dataSetLength={searchedPeople.length} />
         </div>
       </div>
     </>

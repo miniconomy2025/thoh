@@ -23,8 +23,16 @@ export function Paginator(
                     <PaginationPrevious className="cursor-pointer" onClick={() => setPage(page - 1)}/>
                 </PaginationItem>
             }
+            {
+                page > pagesToShow - 1 &&
+                <PaginationItem>
+                    <PaginationLink className="cursor-pointer" onClick={() => setPage(1)}>
+                        {1}
+                    </PaginationLink>
+                </PaginationItem>
+            }
             {    
-                startPage > 1 &&
+                startPage > 2 &&
                 <PaginationItem>
                     <PaginationEllipsis />
                 </PaginationItem>
@@ -32,16 +40,24 @@ export function Paginator(
             {
                 Array.from({ length: endPage - startPage + 1 }, (_, index) => startPage + index).map((currentPage) => (
                 <PaginationItem key={currentPage}>
-                    <PaginationLink onClick={() => setPage(currentPage)} isActive={page === currentPage}>
+                    <PaginationLink className="cursor-pointer" onClick={() => setPage(currentPage)} isActive={page === currentPage}>
                     {currentPage}
                     </PaginationLink>
                 </PaginationItem>
                 ))
             }
             {
-                endPage < Math.ceil(dataSetLength / pageSize) &&
+                endPage < Math.ceil(dataSetLength / pageSize) - 1 &&
                 <PaginationItem>
                     <PaginationEllipsis />
+                </PaginationItem>
+            }
+            {
+                page < Math.ceil(dataSetLength / pageSize) - (pagesToShow - 2) &&
+                <PaginationItem>
+                    <PaginationLink className="cursor-pointer" onClick={() => setPage(Math.ceil(dataSetLength / pageSize))}>
+                        {Math.ceil(dataSetLength / pageSize)}
+                    </PaginationLink>
                 </PaginationItem>
             }
             {

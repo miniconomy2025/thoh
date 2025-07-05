@@ -180,7 +180,7 @@ export function EconomicFlowReporting() {
                           <div className="flex items-center space-x-2">
                             <span className="text-sm font-medium text-muted-foreground">{activity.time}</span>
                           </div>
-                          <p className="text-sm text-gray-900 mt-1">{activity.description}</p>
+                          <p className="text-sm mt-1">{activity.description}</p>
                           {activity.amount && (
                             <p className="text-sm font-semibold text-green-600 mt-1">{formatCurrency(activity.amount)}</p>
                           )}
