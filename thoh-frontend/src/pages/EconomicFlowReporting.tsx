@@ -5,9 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table"
 import { ScrollArea } from "../components/ui/scroll-area"
 import { Badge } from "../components/ui/badge"
-import { TrendingUp, TrendingDown, Activity, Clock } from "lucide-react"
+import { TrendingUp, Activity, Clock } from "lucide-react"
 import { SidebarTrigger } from "../components/ui/sidebar"
 import { ModeToggle } from "../components/mode-toggle"
+import { ChartArea } from "../components/ui/chart-area"
 
 interface Entity {
   id: string
@@ -27,8 +28,12 @@ export function EconomicFlowReporting() {
   const [currentDay, setCurrentDay] = useState(1)
   const [totalEconomyValue, setTotalEconomyValue] = useState(2450000)
   const [totalTrades, setTotalTrades] = useState(156)
+  const [machineryChartData, setMachineryChartData] = useState<{ month: string; value: number }[]>([{ month: "January", value: 0 }])
+  const [truckChartData, setTruckChartData] = useState<{ month: string; value: number }[]>([{ month: "January", value: 0 }])
+  const [rawMaterialsData, setRawMaterialsData] = useState<{ month: string; value: number }[]>([{ month: "January", value: 0 }])
+  const [activities, setActivities] = useState<ActivityItem[]>([])
 
-  const [entities] = useState<Entity[]>([
+  const [entities, setEntities] = useState<Entity[]>([
     { id: "1", type: "Supplier", name: "Global Materials Ltd", accountValue: 450000 },
     { id: "2", type: "Logistics", name: "FastTrans Corp", accountValue: 125000 },
     { id: "3", type: "Retail Bank", name: "RetailBank1", accountValue: 890000 },
@@ -37,14 +42,26 @@ export function EconomicFlowReporting() {
     { id: "6", type: "Recycler", name: "EcoRecycle Solutions", accountValue: 85000 },
   ])
 
-  const [activities, setActivities] = useState<ActivityItem[]>([
-    { id: "1", time: "12:00", description: "Pear paid R 12,000 to BulkTrans", amount: 12000 },
-    { id: "2", time: "14:03", description: "RetailBank1 loaned R 10,000 to a person", amount: 10000 },
-    { id: "3", time: "15:20", description: "Someone sold phone to consumer for R 6,000", amount: 6000 },
-    { id: "4", time: "15:55", description: "Material shipment received by Supplier", amount: 25000 },
-    { id: "5", time: "16:12", description: "Phone manufacturing completed", amount: 8500 },
-    { id: "6", time: "16:45", description: "Recycling process initiated for old devices", amount: 3200 },
-  ])
+
+  function getNextMonth(month: string): string {
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    const monthIndex = months.indexOf(month)
+    return months[(monthIndex + 1) % 12]
+  }
+
+  function getActivityDescription(): string {
+    const descriptions = [
+      "Automated transaction processed",
+      "Material shipment received by Supplier",
+      "Recycling process initiated for old devices",
+      "Phone manufacturing completed",
+      "Someone sold phone to consumer for R 6,000",
+      "Pear paid R 12,000 to BulkTrans",
+      "RetailBank1 loaned R 10,000 to a person",
+    ]
+
+    return descriptions[Math.floor(Math.random() * descriptions.length)]
+  }
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -54,7 +71,7 @@ export function EconomicFlowReporting() {
       const newActivity: ActivityItem = {
         id: Date.now().toString(),
         time: new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" }),
-        description: `Automated transaction processed`,
+        description: getActivityDescription(),
         amount: Math.floor(Math.random() * 50000) + 1000,
       }
 
@@ -64,7 +81,26 @@ export function EconomicFlowReporting() {
         const change = Math.floor(Math.random() * 10000) - 5000
         return prev + change
       })
-    }, 2000) // Update every 10 seconds
+
+      // always keep at most 12 months of data and remove the oldest one
+      setMachineryChartData((prev) => [...(prev.slice(prev.length > 12 ? 1 : 0)), { 
+          month: getNextMonth(prev[prev.length - 1].month),
+          value: Math.floor(Math.random() * 100000) + 10000 }]) 
+
+      setTruckChartData((prev) => [...(prev.slice(prev.length > 12 ? 1 : 0)), { 
+          month: getNextMonth(prev[prev.length - 1].month),
+          value: Math.floor(Math.random() * 100000) + 10000 }])
+
+      setRawMaterialsData((prev) => [...(prev.slice(prev.length > 12 ? 1 : 0)), { 
+          month: getNextMonth(prev[prev.length - 1].month),
+          value: Math.floor(Math.random() * 100000) + 10000 }])
+
+      setEntities((prev) => prev.map((entity) => ({
+        ...entity,
+        accountValue: entity.accountValue + Math.floor(Math.random() * 10000) - 5000
+      })))
+
+    }, 2000) // Update every 2 seconds
 
     return () => clearInterval(interval)
   }, [])
@@ -180,7 +216,7 @@ export function EconomicFlowReporting() {
                           <div className="flex items-center space-x-2">
                             <span className="text-sm font-medium text-muted-foreground">{activity.time}</span>
                           </div>
-                          <p className="text-sm text-gray-900 mt-1">{activity.description}</p>
+                          <p className="text-sm mt-1">{activity.description}</p>
                           {activity.amount && (
                             <p className="text-sm font-semibold text-green-600 mt-1">{formatCurrency(activity.amount)}</p>
                           )}
@@ -200,28 +236,24 @@ export function EconomicFlowReporting() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Cash Balance over time</CardTitle>
+                <CardTitle className="text-sm">Machinery sold per year</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="h-32 bg-gray-50 rounded flex items-center justify-center">
-                  <div className="flex items-center space-x-2">
-                    <TrendingUp className="h-8 w-8 text-green-500" />
-                    <div className="text-sm text-muted-foreground">Chart Placeholder</div>
-                  </div>
+                  <ChartArea chartData={machineryChartData} />
                 </div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Phone Sales Per Day</CardTitle>
+                <CardTitle className="text-sm">Trucks sold per year</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="h-32 bg-gray-50 rounded flex items-center justify-center">
-                  <div className="flex items-center space-x-2">
-                    <Activity className="h-8 w-8 text-blue-500" />
-                    <div className="text-sm text-muted-foreground">Chart Placeholder</div>
-                  </div>
+                  <ChartArea chartData={truckChartData} 
+                    strokeColour="green"
+                    fillColour="lightgreen"/>
                 </div>
               </CardContent>
             </Card>
@@ -232,10 +264,9 @@ export function EconomicFlowReporting() {
               </CardHeader>
               <CardContent>
                 <div className="h-32 bg-gray-50 rounded flex items-center justify-center">
-                  <div className="flex items-center space-x-2">
-                    <TrendingDown className="h-8 w-8 text-orange-500" />
-                    <div className="text-sm text-muted-foreground">Chart Placeholder</div>
-                  </div>
+                  <ChartArea chartData={rawMaterialsData} 
+                    strokeColour="red"
+                    fillColour="salmon"/>
                 </div>
               </CardContent>
             </Card>

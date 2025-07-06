@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader } from "../components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
 import { Badge } from "../components/ui/badge"
 import { Search, Filter } from "lucide-react"
-import { SidebarTrigger } from "../components/ui/sidebar"
 import { ModeToggle } from "../components/mode-toggle"
+import { SidebarTrigger } from "../components/ui/sidebar"
 
 interface InventoryItem {
   id: string
@@ -13,6 +13,7 @@ interface InventoryItem {
   itemName: string
   price: number
   stock: number
+  unit: "kgs" | "units"
 }
 
 export function RawMaterialsEquipment() {
@@ -21,16 +22,16 @@ export function RawMaterialsEquipment() {
   const [filterCategory, setFilterCategory] = useState("all")
 
   const [inventory] = useState<InventoryItem[]>([
-    { id: "1", category: "Raw Material", itemName: "Copper", price: 2500, stock: 150 },
-    { id: "2", category: "Transport", itemName: "Small Truck", price: 45000, stock: 8 },
-    { id: "3", category: "Raw Material", itemName: "Sand", price: 180, stock: 500 },
-    { id: "4", category: "Machinery", itemName: "Case Machine", price: 125000, stock: 3 },
-    { id: "5", category: "Transport", itemName: "Large Truck", price: 85000, stock: 5 },
-    { id: "6", category: "Machinery", itemName: "Recycler", price: 95000, stock: 2 },
-    { id: "7", category: "Raw Material", itemName: "Steel", price: 3200, stock: 200 },
-    { id: "8", category: "Raw Material", itemName: "Aluminum", price: 2800, stock: 120 },
-    { id: "9", category: "Transport", itemName: "Forklift", price: 25000, stock: 12 },
-    { id: "10", category: "Machinery", itemName: "Conveyor Belt", price: 15000, stock: 6 },
+    { id: "1", category: "Raw Material", itemName: "Copper", price: 2500, stock: 1500, unit: "kgs" },
+    { id: "2", category: "Transport", itemName: "Small Truck", price: 45000, stock: 8, unit: "units" },
+    { id: "3", category: "Raw Material", itemName: "Sand", price: 180, stock: 5000, unit: "kgs" },
+    { id: "4", category: "Machinery", itemName: "Case Machine", price: 125000, stock: 3, unit: "units" },
+    { id: "5", category: "Transport", itemName: "Large Truck", price: 85000, stock: 5, unit: "units" },
+    { id: "6", category: "Machinery", itemName: "Recycler", price: 95000, stock: 2, unit: "units" },
+    { id: "7", category: "Raw Material", itemName: "Steel", price: 3200, stock: 2000, unit: "kgs" },
+    { id: "8", category: "Raw Material", itemName: "Aluminum", price: 2800, stock: 1200, unit: "kgs" },
+    { id: "9", category: "Transport", itemName: "Forklift", price: 25000, stock: 12, unit: "units" },
+    { id: "10", category: "Machinery", itemName: "Conveyor Belt", price: 15000, stock: 6, unit: "units" },
   ])
 
   const filteredAndSortedItems = useMemo(() => {
@@ -73,10 +74,16 @@ export function RawMaterialsEquipment() {
     return colors[category] || "bg-gray-100 text-gray-800"
   }
 
-  const getStockStatus = (stock: number) => {
+  const getStockStatus = (stock: number, unit: string) => {
     if (stock === 0) return { color: "text-red-600", status: "Out of Stock" }
-    if (stock < 10) return { color: "text-orange-600", status: "Low Stock" }
-    return { color: "text-green-600", status: "In Stock" }
+
+    if (unit === "kgs") {
+      if (stock < 500) return { color: "text-orange-600", status: "Low Stock" }
+      return { color: "text-green-600", status: "In Stock" }
+    } else {
+      if (stock < 10) return { color: "text-orange-600", status: "Low Stock" }
+      return { color: "text-green-600", status: "In Stock" }
+    }
   }
 
   return (
@@ -84,7 +91,7 @@ export function RawMaterialsEquipment() {
       <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
         <SidebarTrigger className="-ml-1" />
         <div className="h-4 w-px bg-sidebar-border mx-2" />
-        <h1 className="text-lg font-semibold grow">People and salary manager</h1>
+        <h1 className="text-lg font-semibold grow">Admin Control Panel</h1>
         <ModeToggle />
       </header>
       <div className="p-6 w-full mx-auto">
@@ -140,7 +147,7 @@ export function RawMaterialsEquipment() {
             </div>
           ) : (
             filteredAndSortedItems.map((item) => {
-              const stockStatus = getStockStatus(item.stock)
+              const stockStatus = getStockStatus(item.stock, item.unit)
               return (
                 <Card key={item.id} className="hover:shadow-md transition-shadow">
                   <CardHeader className="pb-3">
@@ -160,7 +167,9 @@ export function RawMaterialsEquipment() {
                     </div>
                     <div>
                       <span className="text-sm text-gray-600">Stock: </span>
-                      <span className={`font-semibold ${stockStatus.color}`}>{item.stock}</span>
+                      <span className={`font-semibold ${stockStatus.color}`}>
+                        {item.stock.toLocaleString()} {item.unit}
+                      </span>
                     </div>
                   </CardContent>
                 </Card>
