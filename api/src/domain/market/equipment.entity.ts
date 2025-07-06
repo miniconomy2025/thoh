@@ -1,13 +1,13 @@
 import { Money, Weight } from "../shared/value-objects";
-import { MachineType, VehicleType } from "./market.types";
+import { MachineType, TruckType } from "./market.types";
 
 export abstract class Equipment {
     public readonly id?: number; // Make id optional
-    public readonly type: MachineType | VehicleType;
+    public readonly type: MachineType | TruckType;
     public cost: Money;
     public weight: Weight;
 
-    constructor(type: MachineType | VehicleType, cost: Money, weight: Weight, id?: number) { // id is now optional
+    constructor(type: MachineType | TruckType, cost: Money, weight: Weight, id?: number) { // id is now optional
         this.id = id;
         this.type = type;
         this.cost = cost;
@@ -16,27 +16,41 @@ export abstract class Equipment {
 }
 
 export class Machine extends Equipment {
-    public readonly productionRatio: number;
-    marketId: number;
+    public readonly materialRatio: string;
+    public readonly productionRate: number;
+    public readonly quantity: number;
     sold: boolean;
 
-    constructor(type: MachineType, cost: Money, weight: Weight, ratio: number, marketId: number, id: number, sold: boolean = false) {
+    constructor(type: MachineType, cost: Money, weight: Weight, materialRatio: string, productionRate: number, quantity: number, id: number, sold: boolean = false) {
         super(type, cost, weight, id);
-        this.productionRatio = ratio;
-        this.marketId = marketId;
+        this.materialRatio = materialRatio;
+        this.productionRate = productionRate;
+        this.quantity = quantity;
         this.sold = sold;
+    }
+
+    get machineName(): string {
+        return this.type;
     }
 }
 
-export class Vehicle extends Equipment {
+export class Truck extends Equipment {
     public readonly operatingCostPerDay: Money;
-    marketId: number;
+    public readonly quantity: number;
     sold: boolean;
 
-    constructor(type: VehicleType, cost: Money, weight: Weight, operatingCost: Money, marketId: number, id: number, sold: boolean = false) {
+    constructor(type: TruckType, cost: Money, weight: Weight, operatingCost: Money, quantity: number, id: number, sold: boolean = false) {
         super(type, cost, weight, id);
         this.operatingCostPerDay = operatingCost;
-        this.marketId = marketId;
+        this.quantity = quantity;
         this.sold = sold;
+    }
+
+    get truckName(): string {
+        return this.type;
+    }
+
+    get maximumLoad(): number {
+        return this.weight.value;
     }
 }

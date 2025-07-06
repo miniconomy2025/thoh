@@ -13,7 +13,6 @@ export class PgSimulationRepository implements ISimulationRepository {
   async save(simulation: Simulation): Promise<number> {
     const data = SimulationMapper.toDb(simulation);
     if (!simulation.id || simulation.id === 0) {
-      // Insert new simulation (id will be auto-generated)
       const result = await pool.query(`
         INSERT INTO simulation (status, "currentDay")
         VALUES ($1, $2)
@@ -24,7 +23,6 @@ export class PgSimulationRepository implements ISimulationRepository {
       ]);
       return result.rows[0].id;
     } else {
-      // Upsert (update if exists)
       const result = await pool.query(`
         INSERT INTO simulation (id, status, "currentDay")
         VALUES ($1, $2, $3)

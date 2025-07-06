@@ -1,7 +1,7 @@
 import { RawMaterial } from '../../../domain/market/raw-material.entity';
-import { Machine, Vehicle } from '../../../domain/market/equipment.entity';
-import { MachineType, VehicleType } from '../../../domain/market/market.types';
-import { RawMaterialsMarket, MachinesMarket, VehiclesMarket } from '../../../domain/market/market.aggregate';
+import { Machine, Truck } from '../../../domain/market/equipment.entity';
+import { MachineType, TruckType } from '../../../domain/market/market.types';
+import { RawMaterialsMarket, MachinesMarket, TrucksMarket } from '../../../domain/market/market.aggregate';
 import { PgCurrencyRepository } from './currency.repository';
 
 export const MarketMapper = {
@@ -23,12 +23,11 @@ export const MarketMapper = {
   },
   fromDbRawMaterials(data: any) {
     const rawMaterials = Array.isArray(data.rawMaterials)
-      ? data.rawMaterials.map((m: any) => new RawMaterial(
-          m.name,
-          typeof m.costPerKg === 'object' ? m.costPerKg.amount : m.costPerKg,
-          typeof m.availableWeight === 'object' ? m.availableWeight.value : m.availableWeight,
-          m.marketId
-        ))
+      ? data.rawMaterials.map((m: any) => {
+          const costPerKg = typeof m.costPerKg === 'object' ? m.costPerKg.amount : Number(m.costPerKg);
+          const availableWeight = typeof m.availableWeight === 'object' ? m.availableWeight.value : Number(m.availableWeight);
+          return new RawMaterial(m.name, costPerKg, availableWeight);
+        })
       : [];
     return new RawMaterialsMarket(rawMaterials);
   },
@@ -39,7 +38,9 @@ export const MarketMapper = {
         type: m.type,
         cost: { ...m.cost },
         weight: { ...m.weight },
-        productionRatio: m.productionRatio
+        materialRatio: m.materialRatio,
+        productionRate: m.productionRate,
+        quantity: m.quantity
       })) : []
     };
   },
@@ -61,49 +62,51 @@ export const MarketMapper = {
             m.type as MachineType,
             { amount: costAmount, currency: defaultCurrency },
             { value: weightValue, unit: 'kg' },
-            m.productionRatio,
-            m.marketId,
+            m.materialRatio || "1:2:5",
+            m.productionRate || 100,
+            m.quantity || 1,
             m.id,
           );
         })
       : [];
     return new MachinesMarket(machines);
   },
-  toDbVehicles(market: VehiclesMarket) {
+  toDbTrucks(market: TrucksMarket) {
     return {
-      vehicles: Array.isArray(market.getVehiclesForSale()) ? market.getVehiclesForSale().map(v => ({
-        id: v.id,
-        type: v.type,
-        cost: { ...v.cost },
-        weight: { ...v.weight },
-        operatingCostPerDay: { ...v.operatingCostPerDay }
+      trucks: Array.isArray(market.getTrucksForSale()) ? market.getTrucksForSale().map(t => ({
+        id: t.id,
+        type: t.type,
+        cost: { ...t.cost },
+        weight: { ...t.weight },
+        operatingCostPerDay: { ...t.operatingCostPerDay },
+        quantity: t.quantity
       })) : []
     };
   },
-  async fromDbVehicles(data: any) {
+  async fromDbTrucks(data: any) {
     const defaultCurrency = await this.getDefaultCurrency();
-    const vehicles = Array.isArray(data.vehicles)
-      ? data.vehicles.map((v: any) => {
-          const costAmount = Number(v.cost);
-          const opCostAmount = Number(v.operatingCostPerDay);
+    const trucks = Array.isArray(data.trucks)
+      ? data.trucks.map((t: any) => {
+          const costAmount = Number(t.cost);
+          const opCostAmount = Number(t.operatingCostPerDay);
           if (!Number.isFinite(costAmount) || isNaN(costAmount)) {
-            console.error('[ERROR] Invalid vehicle cost loaded from DB:', v);
-            throw new Error('Invalid vehicle cost loaded from DB');
+            console.error('[ERROR] Invalid truck cost loaded from DB:', t);
+            throw new Error('Invalid truck cost loaded from DB');
           }
           if (!Number.isFinite(opCostAmount) || isNaN(opCostAmount)) {
-            console.error('[ERROR] Invalid vehicle operating cost loaded from DB:', v);
-            throw new Error('Invalid vehicle operating cost loaded from DB');
+            console.error('[ERROR] Invalid truck operating cost loaded from DB:', t);
+            throw new Error('Invalid truck operating cost loaded from DB');
           }
-          return new Vehicle(
-            v.type as VehicleType,
+          return new Truck(
+            t.type as TruckType,
             { amount: costAmount, currency: defaultCurrency },
-            { value: v.weight, unit: v.weight.unit },
+            { value: Number(t.weight), unit: 'kg' },
             { amount: opCostAmount, currency: defaultCurrency },
-            v.marketId,
-            v.id
+            t.quantity || 1,
+            t.id
           );
         })
       : [];
-    return new VehiclesMarket(vehicles);
+    return new TrucksMarket(trucks);
   }
 }; 

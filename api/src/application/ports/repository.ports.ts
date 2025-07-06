@@ -1,6 +1,7 @@
-import { RawMaterialsMarket, MachinesMarket, VehiclesMarket } from "../../domain/market/market.aggregate";
+import { RawMaterialsMarket, MachinesMarket, TrucksMarket } from "../../domain/market/market.aggregate";
 import { Population } from "../../domain/population/population.aggregate";
 import { Simulation } from "../../domain/simulation/simulation.aggregate";
+import { Order } from "../../domain/market/order.entity";
 
 export interface ISimulationRepository {
     findById(simulationId: number): Promise<Simulation | null>;
@@ -8,13 +9,29 @@ export interface ISimulationRepository {
 }
 
 export interface IMarketRepository {
-    findRawMaterialsMarket(marketId: number): Promise<RawMaterialsMarket | null>;
+    findRawMaterialsMarket(): Promise<RawMaterialsMarket | null>;
     saveRawMaterialsMarket(market: RawMaterialsMarket): Promise<void>;
-    findMachinesMarket(marketId: number): Promise<MachinesMarket | null>;
+    findMachinesMarket(): Promise<MachinesMarket | null>;
     saveMachinesMarket(market: MachinesMarket): Promise<void>;
-    findVehiclesMarket(marketId: number): Promise<VehiclesMarket | null>;
-    saveVehiclesMarket(market: VehiclesMarket): Promise<void>;
+    findTrucksMarket(): Promise<TrucksMarket | null>;
+    saveTrucksMarket(market: TrucksMarket): Promise<void>;
     createMarket(simulationId: number): Promise<number>;
+    
+    // Order repository methods
+    saveOrder(order: Order): Promise<Order>;
+    findOrderById(orderId: number): Promise<Order | null>;
+    getAllOrders(): Promise<Order[]>;
+    
+    // Collection repository methods
+    saveCollection(collection: any): Promise<any>;
+    findCollectionByOrderId(orderId: number): Promise<any | null>;
+    getAllCollections(): Promise<any[]>;
+    markCollectionAsCollected(orderId: number): Promise<void>;
+    
+    // Inventory update methods
+    markTrucksAsSold(truckType: string, quantity: number): Promise<number[]>;
+    markMachinesAsSold(machineType: string, quantity: number): Promise<number[]>;
+    reduceRawMaterialWeight(materialName: string, weightToReduce: number): Promise<number>;
 }
 
 export interface IPopulationRepository {

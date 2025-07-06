@@ -1,5 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from "typeorm";
-import { Market } from "./market.entity";
+import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
 import { RawMaterialType } from "./market.types";
 
 @Entity({ name: "raw_material" })
@@ -16,20 +15,24 @@ export class RawMaterial {
     @Column("decimal", { precision: 12, scale: 2 })
     availableWeight!: number;
 
-    @Column()
-    marketId!: number;
-
-    @ManyToOne(() => Market, (market: Market) => market.rawMaterials)
-    market!: Market;
-
-    constructor(name: RawMaterialType, costPerKg: number, availableWeight: number, marketId: number) {
+    constructor(name: RawMaterialType, costPerKg: number, availableWeight: number) {
         this.name = name;
         this.costPerKg = costPerKg;
         this.availableWeight = availableWeight;
-        this.marketId = marketId;
     }
 
-    // Business logic: Update the price of the material.
+    get rawMaterialName(): string {
+        return this.name;
+    }
+
+    get pricePerKg(): number {
+        return this.costPerKg;
+    }
+
+    get quantityAvailable(): number {
+        return Math.floor(this.availableWeight);
+    }
+
     public updatePrice(newCost: number): void {
         if (newCost < 0) {
             throw new Error("Cost cannot be negative.");
@@ -37,12 +40,9 @@ export class RawMaterial {
         this.costPerKg = newCost;
     }
 
-    // Business logic: Adjust the available quantity.
     public adjustAvailability(changeInWeight: number): void {
-        const newWeight = Number(this.availableWeight) + Number(changeInWeight);
-        if (newWeight < 0) {
-            throw new Error("Available weight cannot be negative.");
-        }
+        const newWeight = Number(changeInWeight);
+
         console.log(`[RAW MATERIAL] Adjusting availability of ${this.name} by ${changeInWeight} kg. New weight: ${newWeight} kg`);
         this.availableWeight = newWeight;
     }

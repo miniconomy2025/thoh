@@ -6,24 +6,24 @@ export class AdvanceSimulationDayUseCase {
     private readonly marketRepo: IMarketRepository
   ) {}
 
-  public async execute(simulationId: number, marketId: number) {
+  public async execute(simulationId: number) {
     const simulation = await this.simulationRepo.findById(simulationId);
-    const rawMaterialsMarket = await this.marketRepo.findRawMaterialsMarket(marketId);
-    const machinesMarket = await this.marketRepo.findMachinesMarket(marketId);
-    const vehiclesMarket = await this.marketRepo.findVehiclesMarket(marketId);
-
-    if (!simulation || !rawMaterialsMarket || !machinesMarket || !vehiclesMarket) {
+    const rawMaterialsMarket = await this.marketRepo.findRawMaterialsMarket();
+    const machinesMarket = await this.marketRepo.findMachinesMarket();
+            const trucksMarket = await this.marketRepo.findTrucksMarket();
+        
+        if (!simulation || !rawMaterialsMarket || !machinesMarket || !trucksMarket) {
       throw new Error('Simulation or market not found');
     }
 
     simulation.advanceDay();
     rawMaterialsMarket.applyDailyRandomness();
     machinesMarket.applyDailyRandomness();
-    vehiclesMarket.applyDailyRandomness();
+    trucksMarket.applyDailyRandomness();
 
     await this.simulationRepo.save(simulation);
     await this.marketRepo.saveRawMaterialsMarket(rawMaterialsMarket);
     await this.marketRepo.saveMachinesMarket(machinesMarket);
-    await this.marketRepo.saveVehiclesMarket(vehiclesMarket);
+            await this.marketRepo.saveTrucksMarket(trucksMarket);
   }
 } 

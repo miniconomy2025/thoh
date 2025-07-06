@@ -1,8 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from "typeorm";
-import { Market } from "./market.entity";
+import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
 
 @Entity({ name: "vehicle" })
-export class Vehicle {
+export class Truck {
   @PrimaryGeneratedColumn()
   id!: number;
 
@@ -17,12 +16,6 @@ export class Vehicle {
 
   @Column("decimal", { precision: 12, scale: 2 })
   operatingCostPerDay!: number;
-
-  @Column()
-  marketId!: number;
-
-  @ManyToOne(() => Market, (market: Market) => market.vehicles)
-  market!: Market;
 
   @Column({ default: false })
   sold!: boolean;

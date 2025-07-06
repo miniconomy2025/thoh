@@ -9,11 +9,21 @@ import { registerRoutes } from "./infrastructure/http/routes";
 import { PgMarketRepository } from "./infrastructure/persistence/postgres/market.repository";
 import { PgPopulationRepository } from "./infrastructure/persistence/postgres/population.repository";
 import { PgSimulationRepository } from "./infrastructure/persistence/postgres/simulation.repository";
-import { InMemoryMarketRepository, InMemoryPopulationRepository, InMemorySimulationRepository } from "./infrastructure/persistence/in-memory/in-memory.repositories";
+
 import { ConsoleNotificationService, StubBankService } from "./infrastructure/services/stub-services";
 import { GetMarketStateUseCase } from './application/user-cases/get-market-state.use-case';
 import { GetPeopleStateUseCase } from './application/user-cases/get-people-state.use-case';
 import { GetSimulationDateUseCase } from './application/user-cases/get-simulation-date.use-case';
+import { GetMachinesUseCase } from './application/user-cases/get-machines.use-case';
+import { GetTrucksUseCase } from './application/user-cases/get-trucks.use-case';
+import { GetRawMaterialsUseCase } from './application/user-cases/get-raw-materials.use-case';
+import { PurchaseMachineUseCase } from './application/user-cases/purchase-machine.use-case';
+import { PurchaseTruckUseCase } from './application/user-cases/purchase-truck.use-case';
+import { PurchaseRawMaterialUseCase } from './application/user-cases/purchase-raw-material.use-case';
+import { GetOrdersUseCase } from './application/user-cases/get-orders.use-case';
+import { PayOrderUseCase } from './application/user-cases/pay-order.use-case';
+import { GetCollectionsUseCase } from './application/user-cases/get-collections.use-case';
+import { CollectItemUseCase } from './application/user-cases/collect-item.use-case';
 
 
 async function initializeApp() {
@@ -39,6 +49,18 @@ async function initializeApp() {
     const getMarketStateUseCase = new GetMarketStateUseCase(marketRepo);
     const getPeopleStateUseCase = new GetPeopleStateUseCase(populationRepo);
     const getSimulationDateUseCase = new GetSimulationDateUseCase(simulationRepo);
+    
+    // Market-related use cases
+    const getMachinesUseCase = new GetMachinesUseCase(marketRepo);
+    const getTrucksUseCase = new GetTrucksUseCase(marketRepo);
+    const getRawMaterialsUseCase = new GetRawMaterialsUseCase(marketRepo);
+    const purchaseMachineUseCase = new PurchaseMachineUseCase(marketRepo);
+    const purchaseTruckUseCase = new PurchaseTruckUseCase(marketRepo);
+    const purchaseRawMaterialUseCase = new PurchaseRawMaterialUseCase(marketRepo);
+    const getOrdersUseCase = new GetOrdersUseCase(marketRepo);
+    const payOrderUseCase = new PayOrderUseCase(marketRepo);
+    const getCollectionsUseCase = new GetCollectionsUseCase(marketRepo);
+    const collectItemUseCase = new CollectItemUseCase(marketRepo);
 
     // Instantiate the Primary Adapter (the API Controller)
     const simulationController = new SimulationController(
@@ -47,6 +69,16 @@ async function initializeApp() {
         getMarketStateUseCase,
         getPeopleStateUseCase,
         getSimulationDateUseCase,
+        getMachinesUseCase,
+        getTrucksUseCase,
+        getRawMaterialsUseCase,
+        purchaseMachineUseCase,
+        purchaseTruckUseCase,
+        purchaseRawMaterialUseCase,
+        getOrdersUseCase,
+        payOrderUseCase,
+        getCollectionsUseCase,
+        collectItemUseCase,
         simulationRepo,
         marketRepo,
         populationRepo
@@ -76,25 +108,9 @@ async function initializeApp() {
 
     const PORT = 3000;
     app.listen(PORT, () => {
-        console.log(`THoH API server is running on http://localhost:${PORT}`);
-        console.log('-------------------------------------------------');
-        console.log('Persistence:', 'PostgreSQL');
-        console.log('Example API calls:');
-        console.log(`
-        POST http://localhost:3000/simulation/start
-        Content-Type: application/json
-
-        {
-            "numberOfPeople": 50,
-            "initialFunds": { "amount": 1000000, "currency": "ZAR" },
-            "baseSalary": { "amount": 5000, "currency": "ZAR" }
-        }
-        `);
-        console.log(`
-        POST http://localhost:3000/simulation/salaries/distribute
-        `);
-        console.log('-------------------------------------------------');
-        console.log('Note: Data will be seeded when you start the simulation via API');
+            console.log(`THoH API server is running on http://localhost:${PORT}`);
+    console.log('Persistence: PostgreSQL');
+    console.log('API Documentation: http://localhost:3000/api-docs');
     });
 }
 

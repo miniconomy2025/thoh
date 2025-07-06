@@ -1,56 +1,82 @@
-import { Machine, Vehicle } from "./equipment.entity";
-import { RawMaterialType, MachineType, VehicleType } from "./market.types";
+import { Machine, Truck } from "./equipment.entity";
+import { RawMaterialType, MachineType, TruckType } from "./market.types";
 import { RawMaterial } from "./raw-material.entity";
 import { getMarketConfig } from '../shared/config';
 import { PgCurrencyRepository } from "../../infrastructure/persistence/postgres/currency.repository";
 export class RawMaterialsMarket {
-    private rawMaterials: Map<RawMaterialType, RawMaterial>;
+    private rawMaterials: RawMaterial[];
     private currencyRepo: PgCurrencyRepository;
 
     constructor(initialMaterials: RawMaterial[]) {
-        this.rawMaterials = new Map(initialMaterials.map(m => [m.name as RawMaterialType, m]));
+        this.rawMaterials = initialMaterials;
         this.currencyRepo = new PgCurrencyRepository();
     }
 
-    public async sellRawMaterial(materialType: RawMaterialType, weightToSell: { value: number, unit: string }): Promise<{ amount: number, currency: string }> {
-        const material = this.rawMaterials.get(materialType);
+    public async checkRawMaterialAvailability(materialName: string, weightToSell: number): Promise<{ amount: number, currency: string, materialId: number }> {
+        const material = this.rawMaterials.find(m => m.name === materialName);
         if (!material) {
-            throw new Error(`Raw material '${materialType}' not found in the market.`);
+            throw new Error(`Raw material '${materialName}' not found in the market.`);
         }
-        if (material.availableWeight < weightToSell.value) {
-            throw new Error(`Not enough ${materialType} in stock.`);
+        
+        const totalAvailableWeight = this.rawMaterials
+            .filter(m => m.name === materialName)
+            .reduce((sum, m) => sum + m.availableWeight, 0);
+            
+        if (totalAvailableWeight < weightToSell) {
+            throw new Error(`Not enough ${materialName} in stock.`);
         }
-        material.adjustAvailability(-weightToSell.value);
-        const totalCost = material.costPerKg * weightToSell.value;
+        
+        const totalCost = material.costPerKg * weightToSell;
         const currency = await this.currencyRepo.getDefaultCurrency();
-        return { amount: totalCost, currency: currency?.code || 'D' };
+        return { amount: totalCost, currency: currency?.code || 'D', materialId: material.id };
+    }
+
+    public async sellRawMaterial(materialName: string, weightToSell: number): Promise<{ amount: number, currency: string, materialId: number }> {
+        const material = this.rawMaterials.find(m => m.name === materialName);
+        if (!material) {
+            throw new Error(`Raw material '${materialName}' not found in the market.`);
+        }
+        const totalAvailableWeight = this.rawMaterials
+            .filter(m => m.name === materialName)
+            .reduce((sum, m) => sum + m.availableWeight, 0);
+            
+        if (totalAvailableWeight < weightToSell) {
+            throw new Error(`Not enough ${materialName} in stock.`);
+        }
+        
+        material.adjustAvailability(-weightToSell);
+        const totalCost = material.costPerKg * weightToSell;
+        const currency = await this.currencyRepo.getDefaultCurrency();
+        return { amount: totalCost, currency: currency?.code || 'D', materialId: material.id };
     }
 
     public updateMaterialPrice(materialType: RawMaterialType, newPrice: number): void {
-        const material = this.rawMaterials.get(materialType);
-        if (!material) {
+        // Update all materials of this type
+        const materials = this.rawMaterials.filter(m => m.name === materialType);
+        if (materials.length === 0) {
             throw new Error(`Raw material '${materialType}' not found.`);
         }
-        material.updatePrice(newPrice);
+        materials.forEach(material => material.updatePrice(newPrice));
     }
 
     public applyDailyRandomness() {
         const config = getMarketConfig();
-        for (const material of this.rawMaterials.values()) {
-            const change = 1 + (Math.random() - 0.5) * 0.2;
-            let newPrice = material.costPerKg * change;
+        for (const material of this.rawMaterials) {
+            const priceChange = 1 + (Math.random() - 0.5) * 0.2;
+            let newPrice = material.costPerKg * priceChange;
             if (!Number.isFinite(newPrice) || isNaN(newPrice)) {
                 newPrice = 1;
             }
             newPrice = Math.max(1, newPrice);
             material.updatePrice(newPrice);
-            const availChange = 1 + (Math.random() - 0.5) * 0.1;
-            material.adjustAvailability(material.availableWeight * (availChange - 1));
+            
+            const incrementalQuantity = Math.max(1, Math.floor( material.availableWeight * 0.02 * (0.8 + Math.random() * 0.4))); // 1.6% to 2.4%
+            material.adjustAvailability(incrementalQuantity);
         }
     }
 
     public getRawMaterials(): RawMaterial[] {
-        return Array.from(this.rawMaterials.values());
+        return this.rawMaterials;
     }
 }
 
@@ -73,15 +99,12 @@ export class MachinesMarket {
 
     public applyDailyRandomness() {
         for (const machine of this.machinesForSale.values()) {
-            console.debug('[DEBUG] Machine before randomness:', machine);
             if (!Number.isFinite(machine.cost.amount) || isNaN(machine.cost.amount)) {
-                console.error('[ERROR] Machine has invalid cost before randomness:', machine);
                 throw new Error('Machine has invalid cost before randomness');
             }
             const change = 1 + (Math.random() - 0.5) * 0.2;
             machine.cost.amount = Math.max(1000, Math.floor(machine.cost.amount * change));
             if (!Number.isFinite(machine.cost.amount) || isNaN(machine.cost.amount)) {
-                console.error('[ERROR] Invalid machine cost after randomness:', machine);
                 throw new Error('Invalid machine cost after randomness');
             }
             console.debug('[DEBUG] Machine after randomness:', machine);
@@ -93,40 +116,38 @@ export class MachinesMarket {
     }
 }
 
-export class VehiclesMarket {
-    private vehiclesForSale: Map<number, Vehicle>;
+export class TrucksMarket {
+    private trucksForSale: Map<number, Truck>;
 
-    constructor(initialVehicles: Vehicle[]) {
-        this.vehiclesForSale = new Map(initialVehicles.filter(v => v.id !== undefined).map(v => [v.id as number, v]));
+    constructor(initialTrucks: Truck[]) {
+        this.trucksForSale = new Map(initialTrucks.filter(t => t.id !== undefined).map(t => [t.id as number, t]));
     }
 
-    public sellVehicle(vehicleId: number): Vehicle {
-        const vehicle = this.vehiclesForSale.get(vehicleId);
-        if (!vehicle) {
-            throw new Error(`Vehicle with ID '${vehicleId}' not for sale.`);
+    public sellTruck(truckId: number): Truck {
+        const truck = this.trucksForSale.get(truckId);
+        if (!truck) {
+            throw new Error(`Truck with ID '${truckId}' not for sale.`);
         }
-        vehicle.sold = true;
-        return vehicle;
+        truck.sold = true;
+        return truck;
     }
 
     public applyDailyRandomness() {
-        for (const vehicle of this.vehiclesForSale.values()) {
+        for (const truck of this.trucksForSale.values()) {
             const change = 1 + (Math.random() - 0.5) * 0.2;
-            vehicle.cost.amount = Math.max(1000, Math.floor(vehicle.cost.amount * change));
-            if (!Number.isFinite(vehicle.cost.amount) || isNaN(vehicle.cost.amount)) {
-                console.error('[ERROR] Invalid vehicle cost after randomness:', vehicle);
-                throw new Error('Invalid vehicle cost after randomness');
+            truck.cost.amount = Math.max(1000, Math.floor(truck.cost.amount * change));
+            if (!Number.isFinite(truck.cost.amount) || isNaN(truck.cost.amount)) {
+                throw new Error('Invalid truck cost after randomness');
             }
             const opChange = 1 + (Math.random() - 0.5) * 0.1;
-            vehicle.operatingCostPerDay.amount = Math.max(100, Math.floor(vehicle.operatingCostPerDay.amount * opChange));
-            if (!Number.isFinite(vehicle.operatingCostPerDay.amount) || isNaN(vehicle.operatingCostPerDay.amount)) {
-                console.error('[ERROR] Invalid vehicle operating cost after randomness:', vehicle);
-                throw new Error('Invalid vehicle operating cost after randomness');
+            truck.operatingCostPerDay.amount = Math.max(100, Math.floor(truck.operatingCostPerDay.amount * opChange));
+            if (!Number.isFinite(truck.operatingCostPerDay.amount) || isNaN(truck.operatingCostPerDay.amount)) {
+                throw new Error('Invalid truck operating cost after randomness');
             }
         }
     }
 
-    public getVehiclesForSale(): Vehicle[] {
-        return Array.from(this.vehiclesForSale.values()).filter(v => !v.sold);
+    public getTrucksForSale(): Truck[] {
+        return Array.from(this.trucksForSale.values()).filter(t => !t.sold);
     }
 }

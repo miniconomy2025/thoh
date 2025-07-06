@@ -21,7 +21,6 @@ export class PgCurrencyRepository {
   }
 
   async getDefaultCurrency(): Promise<Currency | null> {
-    // Assuming 'D' is the default currency based on the migration
     return this.findByCode('D');
   }
 } 

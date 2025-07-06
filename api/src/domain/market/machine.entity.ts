@@ -1,5 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from "typeorm";
-import { Market } from "./market.entity";
+import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
 
 @Entity({ name: "machine" })
 export class Machine {
@@ -15,20 +14,17 @@ export class Machine {
     @Column("decimal", { precision: 12, scale: 2 })
     weight!: number;
 
-    @Column("decimal", { precision: 5, scale: 2 })
-    productionRatio!: number;
+    @Column()
+    materialRatio!: string;
 
     @Column()
-    marketId!: number;
+    productionRate!: number;
 
-    @ManyToOne(() => Market, (market: Market) => market.machines)
-    market!: Market;
-
-    @Column({ default: false })
-    sold!: boolean;
+    @Column()
+    quantity!: number;
 }
 
-export class Vehicle {
+export class Truck {
     constructor(
         public readonly id: string,
         public readonly name: string,
