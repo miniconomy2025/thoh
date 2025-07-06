@@ -5,9 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table"
 import { ScrollArea } from "../components/ui/scroll-area"
 import { Badge } from "../components/ui/badge"
-import { TrendingUp, TrendingDown, Activity, Clock } from "lucide-react"
+import { TrendingUp, Activity, Clock } from "lucide-react"
 import { SidebarTrigger } from "../components/ui/sidebar"
 import { ModeToggle } from "../components/mode-toggle"
+import { ChartArea } from "../components/ui/chart-area"
 
 interface Entity {
   id: string
@@ -204,10 +205,14 @@ export function EconomicFlowReporting() {
               </CardHeader>
               <CardContent>
                 <div className="h-32 bg-gray-50 rounded flex items-center justify-center">
-                  <div className="flex items-center space-x-2">
-                    <TrendingUp className="h-8 w-8 text-green-500" />
-                    <div className="text-sm text-muted-foreground">Chart Placeholder</div>
-                  </div>
+                  <ChartArea chartData={[ 
+                    { month: "January", value: 186 },
+                    { month: "February", value: 305 },
+                    { month: "March", value: 237 },
+                    { month: "April", value: 73 },
+                    { month: "May", value: 209 },
+                    { month: "June", value: 214 }
+                  ]} />
                 </div>
               </CardContent>
             </Card>
@@ -218,10 +223,16 @@ export function EconomicFlowReporting() {
               </CardHeader>
               <CardContent>
                 <div className="h-32 bg-gray-50 rounded flex items-center justify-center">
-                  <div className="flex items-center space-x-2">
-                    <Activity className="h-8 w-8 text-blue-500" />
-                    <div className="text-sm text-muted-foreground">Chart Placeholder</div>
-                  </div>
+                  <ChartArea chartData={[ 
+                      { month: "January", value: 186 },
+                      { month: "February", value: 305 },
+                      { month: "March", value: 237 },
+                      { month: "April", value: 73 },
+                      { month: "May", value: 209 },
+                      { month: "June", value: 214 }
+                    ]} 
+                    strokeColour="green"
+                    fillColour="lightgreen"/>
                 </div>
               </CardContent>
             </Card>
@@ -232,10 +243,16 @@ export function EconomicFlowReporting() {
               </CardHeader>
               <CardContent>
                 <div className="h-32 bg-gray-50 rounded flex items-center justify-center">
-                  <div className="flex items-center space-x-2">
-                    <TrendingDown className="h-8 w-8 text-orange-500" />
-                    <div className="text-sm text-muted-foreground">Chart Placeholder</div>
-                  </div>
+                  <ChartArea chartData={[ 
+                      { month: "January", value: 186 },
+                      { month: "February", value: 305 },
+                      { month: "March", value: 237 },
+                      { month: "April", value: 73 },
+                      { month: "May", value: 209 },
+                      { month: "June", value: 214 }
+                    ]} 
+                    strokeColour="red"
+                    fillColour="salmon"/>
                 </div>
               </CardContent>
             </Card>
