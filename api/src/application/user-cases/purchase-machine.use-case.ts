@@ -46,11 +46,13 @@ export class PurchaseMachineUseCase {
             orderId: savedOrder.id,
             machineName: machine.machineName,
             quantity: input.quantity,
-            price: totalPrice,
+            totalPrice: totalPrice,
+            unitPrice: machine.cost.amount,
+            unitWeight: machine.weight.value,
             weight: machine.weight.value * input.quantity,
             machineDetails: {
-                requiredMaterials: "electronics, plastic, metal",
                 materialRatio: machine.materialRatio,
+                materialRatioDescription: machine.materialRatioDescription,
                 productionRate: machine.productionRate
             }
         };

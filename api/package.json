@@ -5,6 +5,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon --watch src --ext ts --exec ts-node src/main.ts",
+    "start": "ts-node src/main.ts",
     "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js",
     "migration:generate": "npm run typeorm -- migration:generate src/infrastructure/persistence/postgres/migrations/third --dataSource src/domain/market/data-source.ts",
     "migration:run": "npm run typeorm -- migration:run --dataSource src/domain/market/data-source.ts",

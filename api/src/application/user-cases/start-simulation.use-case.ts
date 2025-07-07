@@ -109,7 +109,10 @@ export class StartSimulationUseCase {
                     machineConfig.materialRatio,
                     machineConfig.productionRate,
                     1, // quantity
-                    machineId++
+                    machineId++,
+                    false,
+                    machineConfig.materialRatioDescription
+
                 );
                 machines.push(machine);
             }

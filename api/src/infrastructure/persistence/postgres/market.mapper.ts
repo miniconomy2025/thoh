@@ -39,6 +39,7 @@ export const MarketMapper = {
         cost: { ...m.cost },
         weight: { ...m.weight },
         materialRatio: m.materialRatio,
+        materialRatioDescription: m.materialRatioDescription,
         productionRate: m.productionRate,
         quantity: m.quantity
       })) : []
@@ -58,7 +59,7 @@ export const MarketMapper = {
             console.error('[ERROR] Invalid machine weight loaded from DB:', m);
             throw new Error('Invalid machine weight loaded from DB');
           }
-          return new Machine(
+          const machine = new Machine(
             m.type as MachineType,
             { amount: costAmount, currency: defaultCurrency },
             { value: weightValue, unit: 'kg' },
@@ -66,7 +67,10 @@ export const MarketMapper = {
             m.productionRate || 100,
             m.quantity || 1,
             m.id,
+            m.sold !== undefined ? !!m.sold : false,
+            m.materialRatioDescription
           );
+          return machine;
         })
       : [];
     return new MachinesMarket(machines);
@@ -97,7 +101,7 @@ export const MarketMapper = {
             console.error('[ERROR] Invalid truck operating cost loaded from DB:', t);
             throw new Error('Invalid truck operating cost loaded from DB');
           }
-          return new Truck(
+          const truck = new Truck(
             t.type as TruckType,
             { amount: costAmount, currency: defaultCurrency },
             { value: Number(t.weight), unit: 'kg' },
@@ -105,6 +109,8 @@ export const MarketMapper = {
             t.quantity || 1,
             t.id
           );
+          truck.sold = t.sold !== undefined ? !!t.sold : false;
+          return truck;
         })
       : [];
     return new TrucksMarket(trucks);
