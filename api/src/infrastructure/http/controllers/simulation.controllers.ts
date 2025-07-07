@@ -175,21 +175,26 @@ export class SimulationController {
          * @openapi
          * /simulation/current-simulation-time:
          *   get:
-         *     summary: Get current simulation date
+         *     summary: Get the current in-simulation date and time
          *     responses:
          *       200:
-         *         description: Simulation date
+         *         description: Current simulation date and time
          *         content:
          *           application/json:
          *             schema:
          *               type: object
          *               properties:
-         *                 date:
+         *                 simulationDate:
          *                   type: string
-         *                   example: '23/08/2025'
-         *                 time:
+         *                   example: "2050-01-15"
+         *                 simulationTime:
          *                   type: string
-         *                   example: '12:00:00'
+         *                   example: "13:45:30"
+         *                 simulationDay:
+         *                   type: number
+         *                   example: 15
+         *       400:
+         *         description: Simulation not running
          *       500:
          *         description: Error
          */
@@ -197,8 +202,16 @@ export class SimulationController {
             if (!this.validateSimulationRunning(res)) return;
             
             try {
-                const state = await this.getSimulationDateUseCase.execute(0);
-                res.json(state);
+                const simulation = await this.simulationRepo.findById(this.simulationId!);
+                if (!simulation) {
+                    throw new Error('Simulation not found');
+                }
+                
+                res.json({
+                    simulationDate: simulation.getCurrentSimDateString(),
+                    simulationTime: simulation.getCurrentSimTime(),
+                    simulationDay: simulation.currentDay
+                });
             } catch (err: any) {
                 res.status(500).json({ error: err.message });
             }

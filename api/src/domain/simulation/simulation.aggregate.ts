@@ -45,6 +45,25 @@ export class Simulation {
         return date;
     }
 
+    getCurrentSimTime(): string {
+        // 2 real minutes (120000ms) = 1 simulation day (24 hours or 86400 simulation seconds)
+        // So each real millisecond = 86400/120000 = 0.72 simulation seconds
+        const SIM_DAY_MS = 2 * 60 * 1000; // 2 minutes in milliseconds
+        const elapsedRealMs = Date.now() - this.unixEpochStartTime;
+        
+        // Get milliseconds elapsed in current day
+        const msInCurrentDay = elapsedRealMs % SIM_DAY_MS;
+        
+        // Convert to simulation time (24 hours distributed across 2 real minutes)
+        const totalSimSeconds = Math.floor((msInCurrentDay / SIM_DAY_MS) * 24 * 60 * 60);
+        
+        const hours = Math.floor(totalSimSeconds / 3600);
+        const minutes = Math.floor((totalSimSeconds % 3600) / 60);
+        const seconds = totalSimSeconds % 60;
+        
+        return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+
     /**
      * Returns the current simulation date as an ISO string (YYYY-MM-DD).
      */
