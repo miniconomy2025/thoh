@@ -2,6 +2,7 @@ import { IMarketRepository } from '../ports/repository.ports';
 
 export interface CollectItemInput {
     orderId: number;
+    collectQuantity: number;
 }
 
 export class CollectItemUseCase {
@@ -17,13 +18,18 @@ export class CollectItemUseCase {
             throw new Error(`Order ${input.orderId} has already been collected`);
         }
 
-        await this.marketRepo.markCollectionAsCollected(input.orderId);
+        const currentCollected = Number(collection.amountCollected ?? 0);
+        const totalQuantity = Number(collection.quantity);
+        if(input.collectQuantity > totalQuantity - currentCollected) {
+            throw new Error(`Cannot collect ${input.collectQuantity} items. Would exceed total quantity of ${totalQuantity} (already collected: ${currentCollected}).`);
+        }
+        const toCollect = input.collectQuantity;
+        
+        const updated = await this.marketRepo.collectFromCollection(input.orderId, toCollect);
 
         return {
             orderId: input.orderId,
-            itemName: collection.itemName,
-            quantity: collection.quantity,
-            message: `Order ${input.orderId} has been marked as collected successfully`
+            quantityRemaining: updated.quantity - updated.amountCollected
         };
     }
 } 

@@ -37,16 +37,17 @@ export class PgMarketRepository implements IMarketRepository {
         throw new Error('Cannot save machine with null/invalid weight');
       }
       await pool.query(`
-        INSERT INTO machine (type, cost, weight, "materialRatio", "productionRate", "quantity")
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO machine (type, cost, weight, "materialRatio", "materialRatioDescription", "productionRate", "quantity")
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         ON CONFLICT (id) DO UPDATE SET
           type = EXCLUDED.type,
           cost = EXCLUDED.cost,
           weight = EXCLUDED.weight,
           "materialRatio" = EXCLUDED."materialRatio",
+          "materialRatioDescription" = EXCLUDED."materialRatioDescription",
           "productionRate" = EXCLUDED."productionRate",
           "quantity" = EXCLUDED."quantity"
-      `, [ m.type, m.cost.amount, m.weight.value, m.materialRatio, m.productionRate, m.quantity]);
+      `, [ m.type, m.cost.amount, m.weight.value, m.materialRatio, m.materialRatioDescription, m.productionRate, m.quantity]);
     }
   }
 
@@ -78,20 +79,49 @@ export class PgMarketRepository implements IMarketRepository {
 
   // Order repository methods
   async saveOrder(order: Order): Promise<Order> {
-    const result = await pool.query(`
-      INSERT INTO orders ("itemName", "itemId", quantity, "unitPrice", "totalPrice", currency, "orderDate", status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING *
-    `, [
-      order.itemName,
-      order.itemId,
-      order.quantity,
-      order.unitPrice,
-      order.totalPrice,
-      order.currency,
-      order.orderDate,
-      order.status
-    ]);
+    let result;
+    if (order.id) {
+      // Update existing order
+      result = await pool.query(`
+        UPDATE orders SET
+          "itemName" = $1,
+          "itemId" = $2,
+          quantity = $3,
+          "unitPrice" = $4,
+          "totalPrice" = $5,
+          currency = $6,
+          "orderDate" = $7,
+          status = $8
+        WHERE id = $9
+        RETURNING *
+      `, [
+        order.itemName,
+        order.itemId,
+        order.quantity,
+        order.unitPrice,
+        order.totalPrice,
+        order.currency,
+        order.orderDate,
+        order.status,
+        order.id
+      ]);
+    } else {
+      // Insert new order
+      result = await pool.query(`
+        INSERT INTO orders ("itemName", "itemId", quantity, "unitPrice", "totalPrice", currency, "orderDate", status)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING *
+      `, [
+        order.itemName,
+        order.itemId,
+        order.quantity,
+        order.unitPrice,
+        order.totalPrice,
+        order.currency,
+        order.orderDate,
+        order.status
+      ]);
+    }
 
     const savedOrder = result.rows[0];
     const newOrder = new Order(
@@ -220,14 +250,15 @@ export class PgMarketRepository implements IMarketRepository {
 
   async saveCollection(collection: any): Promise<any> {
     const result = await pool.query(`
-      INSERT INTO collection ("orderId", "itemName", "itemId", quantity, "orderDate", collected)
-      VALUES ($1, $2, $3, $4, $5, $6)
+      INSERT INTO collection ("orderId", "itemName", "itemId", "quantity", "amountCollected", "orderDate", collected)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
     `, [
       collection.orderId,
       collection.itemName,
       collection.itemId,
       collection.quantity,
+      collection.amountCollected,
       collection.orderDate,
       collection.collected
     ]);
@@ -256,5 +287,65 @@ export class PgMarketRepository implements IMarketRepository {
     if (result.rowCount === 0) {
       throw new Error(`Collection for order ${orderId} not found`);
     }
+  }
+
+  async collectFromCollection(orderId: number, collectQuantity: number): Promise<any> {
+    console.log(`[DEBUG] collectFromCollection called with orderId: ${orderId}, collectQuantity: ${collectQuantity}`);
+    
+    // First, get the current state to validate
+    const currentCollection = await pool.query(
+      'SELECT "amountCollected", quantity, collected FROM collection WHERE "orderId" = $1',
+      [orderId]
+    );
+    
+    if (currentCollection.rows.length === 0) {
+      throw new Error(`Collection for order ${orderId} not found`);
+    }
+    
+    const current = currentCollection.rows[0];
+    console.log(`[DEBUG] Current collection state:`, current);
+    
+    if (current.collected) {
+      throw new Error(`Collection for order ${orderId} has already been fully collected`);
+    }
+    
+    const currentCollected = Number(current.amountCollected);
+    const totalQuantity = Number(current.quantity);
+    const newCollected = currentCollected + collectQuantity;
+    
+    console.log(`[DEBUG] currentCollected: ${currentCollected}, totalQuantity: ${totalQuantity}, newCollected: ${newCollected}`);
+    
+    if (newCollected > totalQuantity) {
+      throw new Error(`Cannot collect ${collectQuantity} items. Would exceed total quantity of ${totalQuantity} (already collected: ${currentCollected}).`);
+    }
+    
+    // Update with explicit calculation
+    const shouldMarkCollected = newCollected === totalQuantity;
+    
+    if (shouldMarkCollected) {
+      // Mark the order as completed as well
+      await pool.query(
+        `UPDATE orders SET status = 'completed' WHERE id = $1`,
+        [orderId]
+      );
+    }
+    
+    console.log(`[DEBUG] Updating collection with newCollected: ${newCollected}, shouldMarkCollected: ${shouldMarkCollected}`);
+    
+    const result = await pool.query(
+      `UPDATE collection 
+       SET "amountCollected" = $1, 
+           collected = $2
+       WHERE "orderId" = $3 
+       RETURNING *`,
+      [newCollected, shouldMarkCollected, orderId]
+    );
+    
+    if (result.rows.length === 0) {
+      throw new Error(`Failed to update collection for order ${orderId}`);
+    }
+    
+    console.log(`[DEBUG] Updated collection result:`, result.rows[0]);
+    return result.rows[0];
   }
 }

@@ -27,6 +27,7 @@ export interface IMarketRepository {
     findCollectionByOrderId(orderId: number): Promise<any | null>;
     getAllCollections(): Promise<any[]>;
     markCollectionAsCollected(orderId: number): Promise<void>;
+    collectFromCollection(orderId: number, collectQuantity: number): Promise<any>;
     
     // Inventory update methods
     markTrucksAsSold(truckType: string, quantity: number): Promise<number[]>;

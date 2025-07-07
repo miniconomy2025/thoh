@@ -19,14 +19,26 @@ export class Machine extends Equipment {
     public readonly materialRatio: string;
     public readonly productionRate: number;
     public readonly quantity: number;
+    public materialRatioDescription?: string;
     sold: boolean;
 
-    constructor(type: MachineType, cost: Money, weight: Weight, materialRatio: string, productionRate: number, quantity: number, id: number, sold: boolean = false) {
+    constructor(
+        type: MachineType,
+        cost: Money,
+        weight: Weight,
+        materialRatio: string,
+        productionRate: number,
+        quantity: number,
+        id: number,
+        sold: boolean = false,
+        materialRatioDescription?: string
+    ) {
         super(type, cost, weight, id);
         this.materialRatio = materialRatio;
         this.productionRate = productionRate;
         this.quantity = quantity;
         this.sold = sold;
+        this.materialRatioDescription = materialRatioDescription;
     }
 
     get machineName(): string {
