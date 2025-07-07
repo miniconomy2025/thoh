@@ -1,5 +1,5 @@
 import { v4 } from 'uuid';
-export type SimulationStatus = 'NOT_STARTED' | 'running' | 'ENDED';
+export type SimulationStatus = 'not_started' | 'running' | 'completed' | 'paused';
 
 
 const SIMULATION_START_DATE = new Date('2050-01-01T00:00:00Z');
@@ -33,7 +33,7 @@ export class Simulation {
     }
 
     end() {
-        this.status = 'ENDED';
+        this.status = 'completed';
     }
 
     /**

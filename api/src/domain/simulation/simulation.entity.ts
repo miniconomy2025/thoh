@@ -35,7 +35,7 @@ export class Simulation {
   }
 
   end() {
-    this.status = 'ended';
+    this.status = 'completed';
   }
   
   getCurrentSimDate() {

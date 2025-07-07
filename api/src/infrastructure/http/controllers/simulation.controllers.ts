@@ -18,6 +18,7 @@ import { CollectItemUseCase } from '../../../application/user-cases/collect-item
 import { runDailyTasks, SIM_DAY_INTERVAL_MS } from '../../scheduling/daily-tasks.job';
 import { IMarketRepository } from '../../../application/ports/repository.ports';
 import { PgCurrencyRepository } from '../../persistence/postgres/currency.repository';
+import { StopSimulationUseCase } from '../../../application/user-cases/stop-simulation.use-case';
 
 export class SimulationController {
     private dailyJobInterval: NodeJS.Timeout | null = null;
@@ -27,6 +28,7 @@ export class SimulationController {
 
     constructor(
         private readonly startSimulationUseCase: StartSimulationUseCase,
+        private readonly stopSimulationUseCase: StopSimulationUseCase,
         private readonly distributeSalariesUseCase: DistributeSalariesUseCase,
         private readonly getMarketStateUseCase: GetMarketStateUseCase,
         private readonly getPeopleStateUseCase: GetPeopleStateUseCase,
@@ -786,6 +788,40 @@ export class SimulationController {
                 } else {
                     res.status(500).json({ error: err.message });
                 }
+            }
+        });
+
+        /**
+         * @openapi
+         * /simulation/stop:
+         *   post:
+         *     summary: Stop the current simulation
+         *     responses:
+         *       200:
+         *         description: Simulation stopped successfully
+         *       400:
+         *         description: No simulation running
+         *       500:
+         *         description: Error stopping simulation
+         */
+        router.post('/stop', async (req, res) => {
+            if (!this.validateSimulationRunning(res)) return;
+            
+            try {
+                await this.stopSimulationUseCase.execute(this.simulationId!);
+                
+                // Clear the daily job interval
+                if (this.dailyJobInterval) {
+                    clearInterval(this.dailyJobInterval);
+                    this.dailyJobInterval = null;
+                }
+                
+                // Clear the simulation ID
+                this.simulationId = undefined;
+                
+                res.json({ message: 'Simulation stopped successfully' });
+            } catch (err: any) {
+                res.status(500).json({ error: err.message });
             }
         });
 
