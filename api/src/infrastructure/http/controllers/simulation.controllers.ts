@@ -137,15 +137,20 @@ export class SimulationController {
          * @openapi
          * /simulation/unix-epoch-start-time:
          *   get:
-         *     summary: Get current simulation date
+         *     summary: Get the Unix epoch timestamp when the simulation started
          *     responses:
          *       200:
-         *         description: Simulation date
+         *         description: Unix epoch start time
          *         content:
          *           application/json:
          *             schema:
-         *               type: string
-         *               example: '123455667889'
+         *               type: object
+         *               properties:
+         *                 unixEpochStartTime:
+         *                   type: number
+         *                   example: 1710864000000
+         *       400:
+         *         description: Simulation not running
          *       500:
          *         description: Error
          */
@@ -153,9 +158,11 @@ export class SimulationController {
             if (!this.validateSimulationRunning(res)) return;
             
             try {
-                // You may want to pass a simulationId from query or config
-                const state = await this.getSimulationDateUseCase.execute(0);
-                res.json(state);
+                const simulation = await this.simulationRepo.findById(this.simulationId!);
+                if (!simulation) {
+                    throw new Error('Simulation not found');
+                }
+                res.json({ unixEpochStartTime: simulation.getUnixEpochStartTime() });
             } catch (err: any) {
                 res.status(500).json({ error: err.message });
             }
