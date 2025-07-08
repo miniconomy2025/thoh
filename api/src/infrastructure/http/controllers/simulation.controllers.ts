@@ -18,6 +18,7 @@ import { CollectItemUseCase } from '../../../application/user-cases/collect-item
 import { runDailyTasks, SIM_DAY_INTERVAL_MS } from '../../scheduling/daily-tasks.job';
 import { IMarketRepository } from '../../../application/ports/repository.ports';
 import { PgCurrencyRepository } from '../../persistence/postgres/currency.repository';
+import { StopSimulationUseCase } from '../../../application/user-cases/stop-simulation.use-case';
 
 export class SimulationController {
     private dailyJobInterval: NodeJS.Timeout | null = null;
@@ -27,6 +28,7 @@ export class SimulationController {
 
     constructor(
         private readonly startSimulationUseCase: StartSimulationUseCase,
+        private readonly stopSimulationUseCase: StopSimulationUseCase,
         private readonly distributeSalariesUseCase: DistributeSalariesUseCase,
         private readonly getMarketStateUseCase: GetMarketStateUseCase,
         private readonly getPeopleStateUseCase: GetPeopleStateUseCase,
@@ -137,15 +139,20 @@ export class SimulationController {
          * @openapi
          * /time:
          *   get:
-         *     summary: Get current simulation date
+         *     summary: Get the Unix epoch timestamp when the simulation started
          *     responses:
          *       200:
-         *         description: Simulation date
+         *         description: Unix epoch start time
          *         content:
          *           application/json:
          *             schema:
-         *               type: string
-         *               example: '123455667889'
+         *               type: object
+         *               properties:
+         *                 unixEpochStartTime:
+         *                   type: number
+         *                   example: 1710864000000
+         *       400:
+         *         description: Simulation not running
          *       500:
          *         description: Error
          */
@@ -153,9 +160,11 @@ export class SimulationController {
             if (!this.validateSimulationRunning(res)) return;
             
             try {
-                // You may want to pass a simulationId from query or config
-                const state = await this.getSimulationDateUseCase.execute(0);
-                res.json(state);
+                const simulation = await this.simulationRepo.findById(this.simulationId!);
+                if (!simulation) {
+                    throw new Error('Simulation not found');
+                }
+                res.json({ unixEpochStartTime: simulation.getUnixEpochStartTime() });
             } catch (err: any) {
                 res.status(500).json({ error: err.message });
             }
@@ -166,21 +175,26 @@ export class SimulationController {
          * @openapi
          * /current-simulation-time:
          *   get:
-         *     summary: Get current simulation date
+         *     summary: Get the current in-simulation date and time
          *     responses:
          *       200:
-         *         description: Simulation date
+         *         description: Current simulation date and time
          *         content:
          *           application/json:
          *             schema:
          *               type: object
          *               properties:
-         *                 date:
+         *                 simulationDate:
          *                   type: string
-         *                   example: '23/08/2025'
-         *                 time:
+         *                   example: "2050-01-15"
+         *                 simulationTime:
          *                   type: string
-         *                   example: '12:00:00'
+         *                   example: "13:45:30"
+         *                 simulationDay:
+         *                   type: number
+         *                   example: 15
+         *       400:
+         *         description: Simulation not running
          *       500:
          *         description: Error
          */
@@ -188,8 +202,16 @@ export class SimulationController {
             if (!this.validateSimulationRunning(res)) return;
             
             try {
-                const state = await this.getSimulationDateUseCase.execute(0);
-                res.json(state);
+                const simulation = await this.simulationRepo.findById(this.simulationId!);
+                if (!simulation) {
+                    throw new Error('Simulation not found');
+                }
+                
+                res.json({
+                    simulationDate: simulation.getCurrentSimDateString(),
+                    simulationTime: simulation.getCurrentSimTime(),
+                    simulationDay: simulation.currentDay
+                });
             } catch (err: any) {
                 res.status(500).json({ error: err.message });
             }
@@ -778,6 +800,41 @@ export class SimulationController {
             }
         });
 
+        /**
+         * @openapi
+         * /simulation/stop:
+         *   post:
+         *     summary: Stop the current simulation
+         *     responses:
+         *       200:
+         *         description: Simulation stopped successfully
+         *       400:
+         *         description: No simulation running
+         *       500:
+         *         description: Error stopping simulation
+         */
+        router.post('/stop', async (req, res) => {
+            if (!this.validateSimulationRunning(res)) return;
+            
+            try {
+                await this.stopSimulationUseCase.execute(this.simulationId!);
+                
+                // Clear the daily job interval
+                if (this.dailyJobInterval) {
+                    clearInterval(this.dailyJobInterval);
+                    this.dailyJobInterval = null;
+                }
+                
+                // Clear the simulation ID
+                this.simulationId = undefined;
+                
+                res.json({ message: 'Simulation stopped successfully' });
+            } catch (err: any) {
+                res.status(500).json({ error: err.message });
+            }
+        });
+
+        //app.use('/simulation', router);
         app.use('/', router);
     }
 }

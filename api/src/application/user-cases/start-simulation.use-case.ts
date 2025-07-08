@@ -38,8 +38,8 @@ export class StartSimulationUseCase {
 
     public async execute(): Promise<{ simulationId: number }> {
         const simulation = new Simulation();
-        const simulationId =  await this.simulationRepo.save(simulation);
-        simulation.start();
+        simulation.start();  // Start first to set unix epoch time
+        const simulationId = await this.simulationRepo.save(simulation);  // Then save
 
         const { rawMaterialsMarket, machinesMarket, trucksMarket } = this.createSeededMarkets();
         // const population = this.createSeededPopulation(input.numberOfPeople, input.baseSalary, simulationId);
