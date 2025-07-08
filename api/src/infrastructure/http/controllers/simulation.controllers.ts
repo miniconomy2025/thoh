@@ -834,6 +834,76 @@ export class SimulationController {
             }
         });
 
+        /**
+         * @openapi
+         * /machine-failure:
+         *   get:
+         *     summary: Generate a random machine failure event
+         *     responses:
+         *       200:
+         *         description: Random machine failure event details
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 machineName:
+         *                   type: string
+         *                   description: Name of the machine that failed
+         *                   example: "electronics_machine"
+         *                 failureQuantity:
+         *                   type: integer
+         *                   description: Number of machines that failed
+         *                   example: 5
+         *                 simulationDate:
+         *                   type: string
+         *                   description: Current simulation date
+         *                   example: "2050-01-15"
+         *                 simulationTime:
+         *                   type: string
+         *                   description: Current simulation time
+         *                   example: "14:30:45"
+         *       400:
+         *         description: Simulation not running or no machines available
+         *       500:
+         *         description: Error generating failure event
+         */
+        router.get('/machine-failure', async (req, res) => {
+            if (!this.validateSimulationRunning(res)) return;
+            
+            try {
+                // Get all available machines
+                const machinesResponse = await this.getMachinesUseCase.execute();
+                const machines = machinesResponse.machines;
+                
+                if (!machines || machines.length === 0) {
+                    return res.status(400).json({ error: 'No machines available in the system' });
+                }
+
+                // Randomly select a machine
+                const randomMachine = machines[Math.floor(Math.random() * machines.length)];
+                
+                // Generate random failure quantity (between 1 and 10)
+                const failureQuantity = Math.floor(Math.random() * 10) + 1;
+
+                // Get current simulation date and time
+                const simulation = await this.simulationRepo.findById(this.simulationId!);
+                if (!simulation) {
+                    throw new Error('Simulation not found');
+                }
+
+                // Return the failure event
+                res.json({
+                    machineName: randomMachine.machineName,
+                    failureQuantity: failureQuantity,
+                    simulationDate: simulation.getCurrentSimDateString(),
+                    simulationTime: simulation.getCurrentSimTime()
+                });
+            } catch (err: any) {
+                res.status(500).json({ error: err.message });
+            }
+        });
+
         //app.use('/simulation', router);
         app.use('/', router);
     }
