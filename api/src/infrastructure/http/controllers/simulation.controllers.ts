@@ -54,7 +54,7 @@ export class SimulationController {
     private validateSimulationRunning(res: Response): boolean {
         if (!this.simulationId) {
             res.status(400).json({ 
-                error: 'Simulation is not running. Please start a simulation first using POST /simulation' 
+                error: 'Simulation is not running. Please start a simulation first using POST /simulations' 
             });
             return false;
         }
@@ -66,7 +66,7 @@ export class SimulationController {
 
         /**
          * @openapi
-         * /simulation:
+         * /simulations:
          *   post:
          *     summary: Start a new simulation
          *     responses:
@@ -77,7 +77,7 @@ export class SimulationController {
          *       500:
          *         description: Failed to start simulation
          */
-        router.post('/', async (req: Request, res: Response) => {
+        router.post('/simulations', async (req: Request, res: Response) => {
             try {
                 const { simulationId } = await this.startSimulationUseCase.execute();
                 this.simulationId = simulationId;
@@ -115,7 +115,7 @@ export class SimulationController {
 
         /**
          * @openapi
-         * /simulation/people:
+         * /people:
          *   get:
          *     summary: Get people and their salaries
          *     responses:
@@ -137,7 +137,7 @@ export class SimulationController {
 
         /**
          * @openapi
-         * /simulation/unix-epoch-start-time:
+         * /time:
          *   get:
          *     summary: Get the Unix epoch timestamp when the simulation started
          *     responses:
@@ -156,7 +156,7 @@ export class SimulationController {
          *       500:
          *         description: Error
          */
-        router.get('/unix-epoch-start-time', async (req, res) => {
+        router.get('/time', async (req, res) => {
             if (!this.validateSimulationRunning(res)) return;
             
             try {
@@ -173,7 +173,7 @@ export class SimulationController {
         
         /**
          * @openapi
-         * /simulation/current-simulation-time:
+         * /current-simulation-time:
          *   get:
          *     summary: Get the current in-simulation date and time
          *     responses:
@@ -219,214 +219,7 @@ export class SimulationController {
 
         /**
          * @openapi
-         * /simulation/purchase-machine:
-         *   post:
-         *     summary: Buy a machine from the market
-         *     requestBody:
-         *       required: true
-         *       content:
-         *         application/json:
-         *           schema:
-         *             type: object
-         *             properties:
-         *               machineName:
-         *                 type: string
-         *               quantity:
-         *                 type: integer
-         *     responses:
-         *       200:
-         *         description: Machine purchased
-         *         content:
-         *           application/json:
-         *             schema:
-         *               type: object
-         *               properties:
-         *                 orderId:
-         *                   type: integer
-         *                 machineName:
-         *                   type: string
-         *                 quantity:
-         *                   type: integer
-         *                 price:
-         *                   type: number
-         *                 weight:
-         *                   type: number
-         *                 machineDetails:
-         *                   type: object
-         *                   properties:
-         *                     requiredMaterials:
-         *                       type: string
-         *                     materialRatio:
-         *                       type: string
-         *                       example: "1:2:5"
-         *                     productionRate:
-         *                       type: integer
-         *                       example: 100
-         *       400:
-         *         description: Invalid request
-         *       500:
-         *         description: Error
-         */
-        router.post('/purchase-machine', async (req, res) => {
-            if (!this.validateSimulationRunning(res)) return;
-            
-            try {
-                const { machineName, quantity } = req.body;
-                
-                // Get current simulation date
-                let simulationDate: Date | undefined;
-                if (this.simulationId) {
-                    const simulation = await this.simulationRepo.findById(this.simulationId);
-                    if (simulation) {
-                        simulationDate = simulation.getCurrentSimDate();
-                    }
-                }
-                
-                const result = await this.purchaseMachineUseCase.execute({ 
-                    machineName, 
-                    quantity,
-                    simulationDate
-                });
-                res.json(result);
-            } catch (err: any) {
-                res.status(400).json({ error: err.message });
-            }
-        });
-
-        /**
-         * @openapi
-         * /simulation/purchase-truck:
-         *   post:
-         *     summary: Buy a truck from the market
-         *     requestBody:
-         *       required: true
-         *       content:
-         *         application/json:
-         *           schema:
-         *             type: object
-         *             properties:
-         *               truckName:
-         *                 type: string
-         *               quantity:
-         *                 type: integer
-         *     responses:
-         *       200:
-         *         description: Truck purchased
-         *         content:
-         *           application/json:
-         *             schema:
-         *               type: object
-         *               properties:
-         *                 orderId:
-         *                   type: integer
-         *                 truckName:
-         *                   type: string
-         *                 price:
-         *                   type: number
-         *                 maximumLoad:
-         *                   type: integer
-         *                 operatingCostPerDay:
-         *                   type: string
-         *                   example: D5000/day
-         *       400:
-         *         description: Error
-         *       404:
-         *         description: Market not found
-         */
-        router.post('/purchase-truck', async (req, res) => {
-            if (!this.validateSimulationRunning(res)) return;
-            
-            try {
-                const { truckName, quantity } = req.body;
-                
-                // Get current simulation date
-                let simulationDate: Date | undefined;
-                if (this.simulationId) {
-                    const simulation = await this.simulationRepo.findById(this.simulationId);
-                    if (simulation) {
-                        simulationDate = simulation.getCurrentSimDate();
-                    }
-                }
-                
-                const result = await this.purchaseTruckUseCase.execute({ 
-                    truckName, 
-                    quantity,
-                    simulationDate
-                });
-                res.json(result);
-            } catch (err: any) {
-                res.status(400).json({ error: err.message });
-            }
-        });
-
-        /**
-         * @openapi
-         * /simulation/purchase-raw-material:
-         *   post:
-         *     summary: Create a pending order for raw materials (inventory not reduced until payment)
-         *     requestBody:
-         *       required: true
-         *       content:
-         *         application/json:
-         *           schema:
-         *             type: object
-         *             properties:
-         *               materialName:
-         *                 type: string
-         *               weightQuantity:
-         *                 type: number
-         *     responses:
-         *       200:
-         *         description: Raw material order created (pending - inventory will be reduced when paid)
-         *         content:
-         *           application/json:
-         *             schema:
-         *               type: object
-         *               properties:
-         *                 orderId:
-         *                   type: integer
-         *                 materialName:
-         *                   type: string
-         *                 weightQuantity:
-         *                   type: number
-         *                 price:
-         *                   type: number
-         *                 bankAccount:
-         *                   type: string
-         *       400:
-         *         description: Error, insufficient inventory, or simulation not running
-         *       404:
-         *         description: Raw materials market not found
-         */
-        router.post('/purchase-raw-material', async (req, res) => {
-            if (!this.validateSimulationRunning(res)) return;
-            
-            try {
-                const { materialName, weightQuantity } = req.body;
-                
-                // Get current simulation date
-                let simulationDate: Date | undefined;
-                if (this.simulationId) {
-                    const simulation = await this.simulationRepo.findById(this.simulationId);
-                    if (simulation) {
-                        simulationDate = simulation.getCurrentSimDate();
-                    }
-                }
-                
-                const result = await this.purchaseRawMaterialUseCase.execute({ 
-                    materialName, 
-                    weightQuantity,
-                    simulationDate
-                });
-                res.json(result);
-            } catch (err: any) {
-                res.status(400).json({ error: err.message });
-            }
-        });
-
-        /**
-         * @openapi
-         * /simulation/machines:
+         * /machines:
          *   get:
          *     summary: Get machines for sale (grouped by type)
          *     responses:
@@ -473,7 +266,7 @@ export class SimulationController {
 
         /**
          * @openapi
-         * /simulation/trucks:
+         * /trucks:
          *   get:
          *     summary: Get trucks for sale (grouped by type)
          *     responses:
@@ -518,7 +311,7 @@ export class SimulationController {
 
         /**
          * @openapi
-         * /simulation/raw-materials:
+         * /raw-materials:
          *   get:
          *     summary: Get raw materials (grouped by type)
          *     responses:
@@ -557,7 +350,7 @@ export class SimulationController {
 
         /**
          * @openapi
-         * /simulation/orders:
+         * /orders:
          *   get:
          *     summary: Get all orders
          *     responses:
@@ -612,7 +405,213 @@ export class SimulationController {
 
         /**
          * @openapi
-         * /simulation/pay-order:
+         * /machines:
+         *   post:
+         *     summary: Create a new order for a machine
+         *     requestBody:
+         *       required: true
+         *       content:
+         *         application/json:
+         *           schema:
+         *             type: object
+         *             properties:
+         *               machineName:
+         *                 type: string
+         *               quantity:
+         *                 type: integer
+         *     responses:
+         *       200:
+         *         description: Machine order created
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 orderId:
+         *                   type: integer
+         *                 machineName:
+         *                   type: string
+         *                 quantity:
+         *                   type: integer
+         *                 price:
+         *                   type: number
+         *                 weight:
+         *                   type: number
+         *                 machineDetails:
+         *                   type: object
+         *                   properties:
+         *                     requiredMaterials:
+         *                       type: string
+         *                     materialRatio:
+         *                       type: string
+         *                       example: "1:2:5"
+         *                     productionRate:
+         *                       type: integer
+         *                       example: 100
+         *       400:
+         *         description: Invalid request
+         *       500:
+         *         description: Error
+         */
+        router.post('/machines', async (req, res) => {
+            if (!this.validateSimulationRunning(res)) return;
+            
+            try {
+                const { machineName, quantity } = req.body;
+                
+                // Get current simulation date
+                let simulationDate: Date | undefined;
+                if (this.simulationId) {
+                    const simulation = await this.simulationRepo.findById(this.simulationId);
+                    if (simulation) {
+                        simulationDate = simulation.getCurrentSimDate();
+                    }
+                }
+                
+                const result = await this.purchaseMachineUseCase.execute({ 
+                    machineName, 
+                    quantity,
+                    simulationDate
+                });
+                res.json(result);
+            } catch (err: any) {
+                res.status(400).json({ error: err.message });
+            }
+        });
+
+        /**
+         * @openapi
+         * /trucks:
+         *   post:
+         *     summary: Create a new order for a truck
+         *     requestBody:
+         *       required: true
+         *       content:
+         *         application/json:
+         *           schema:
+         *             type: object
+         *             properties:
+         *               truckName:
+         *                 type: string
+         *               quantity:
+         *                 type: integer
+         *     responses:
+         *       200:
+         *         description: Truck order created
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 orderId:
+         *                   type: integer
+         *                 truckName:
+         *                   type: string
+         *                 price:
+         *                   type: number
+         *                 maximumLoad:
+         *                   type: integer
+         *                 operatingCostPerDay:
+         *                   type: string
+         *                   example: D5000/day
+         *       400:
+         *         description: Error
+         *       404:
+         *         description: Market not found
+         */
+        router.post('/trucks', async (req, res) => {
+            if (!this.validateSimulationRunning(res)) return;
+            
+            try {
+                const { truckName, quantity } = req.body;
+                
+                let simulationDate: Date | undefined;
+                if (this.simulationId) {
+                    const simulation = await this.simulationRepo.findById(this.simulationId);
+                    if (simulation) {
+                        simulationDate = simulation.getCurrentSimDate();
+                    }
+                }
+                
+                const result = await this.purchaseTruckUseCase.execute({ 
+                    truckName, 
+                    quantity,
+                    simulationDate
+                });
+                res.json(result);
+            } catch (err: any) {
+                res.status(400).json({ error: err.message });
+            }
+        });
+
+        /**
+         * @openapi
+         * /raw-materials:
+         *   post:
+         *     summary: Create a new order for raw material
+         *     requestBody:
+         *       required: true
+         *       content:
+         *         application/json:
+         *           schema:
+         *             type: object
+         *             properties:
+         *               materialName:
+         *                 type: string
+         *               weightQuantity:
+         *                 type: number
+         *     responses:
+         *       200:
+         *         description: Raw material order created (pending - inventory will be reduced when paid)
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 orderId:
+         *                   type: integer
+         *                 materialName:
+         *                   type: string
+         *                 weightQuantity:
+         *                   type: number
+         *                 price:
+         *                   type: number
+         *                 bankAccount:
+         *                   type: string
+         *       400:
+         *         description: Error, insufficient inventory, or simulation not running
+         *       404:
+         *         description: Raw materials market not found
+         */
+        router.post('/raw-materials', async (req, res) => {
+            if (!this.validateSimulationRunning(res)) return;
+            
+            try {
+                const { materialName, weightQuantity } = req.body;
+                
+                // Get current simulation date
+                let simulationDate: Date | undefined;
+                if (this.simulationId) {
+                    const simulation = await this.simulationRepo.findById(this.simulationId);
+                    if (simulation) {
+                        simulationDate = simulation.getCurrentSimDate();
+                    }
+                }
+                
+                const result = await this.purchaseRawMaterialUseCase.execute({ 
+                    materialName, 
+                    weightQuantity,
+                    simulationDate
+                });
+                res.json(result);
+            } catch (err: any) {
+                res.status(400).json({ error: err.message });
+            }
+        });
+
+        /**
+         * @openapi
+         * /orders/payments:
          *   post:
          *     summary: Pay for and fulfill an order
          *     requestBody:
@@ -659,7 +658,7 @@ export class SimulationController {
          *       500:
          *         description: Error processing payment
          */
-        router.post('/pay-order', async (req, res) => {
+        router.post('/orders/pay', async (req, res) => {
             if (!this.validateSimulationRunning(res)) return;
             
             try {
@@ -687,7 +686,7 @@ export class SimulationController {
 
         /**
          * @openapi
-         * /simulation/collections:
+         * /collections:
          *   get:
          *     summary: Get all collections (items awaiting pickup)
          *     responses:
@@ -741,9 +740,9 @@ export class SimulationController {
 
         /**
          * @openapi
-         * /simulation/collect-item:
-         *   post:
-         *     summary: Mark an item as collected
+         * /collections:
+         *   patch:
+         *     summary: Mark an item as collected (partial or full)
          *     requestBody:
          *       required: true
          *       content:
@@ -754,9 +753,12 @@ export class SimulationController {
          *               orderId:
          *                 type: integer
          *                 description: ID of the order to mark as collected
+         *               collectQuantity:
+         *                 type: number
+         *                 description: Quantity to collect (optional, defaults to all remaining)
          *     responses:
          *       200:
-         *         description: Item marked as collected successfully
+         *         description: Item collected successfully (partial or full)
          *         content:
          *           application/json:
          *             schema:
@@ -765,15 +767,9 @@ export class SimulationController {
          *                 orderId:
          *                   type: integer
          *                   description: ID of the collected order
-         *                 itemName:
-         *                   type: string
-         *                   description: Name of the collected item
-         *                 quantity:
+         *                 quantityRemaining:
          *                   type: number
-         *                   description: Quantity collected
-         *                 message:
-         *                   type: string
-         *                   description: Success message
+         *                   description: Quantity remaining to collect
          *       400:
          *         description: Invalid request, item already collected, or simulation not running
          *       404:
@@ -781,17 +777,17 @@ export class SimulationController {
          *       500:
          *         description: Error processing collection
          */
-        router.post('/collect-item', async (req, res) => {
+        router.patch('/collections', async (req, res) => {
             if (!this.validateSimulationRunning(res)) return;
             
             try {
-                const { orderId } = req.body;
+                const { orderId, collectQuantity } = req.body;
                 
                 if (!orderId || typeof orderId !== 'number') {
                     return res.status(400).json({ error: 'orderId is required and must be a number' });
                 }
                 
-                const result = await this.collectItemUseCase.execute({ orderId });
+                const result = await this.collectItemUseCase.execute({ orderId, collectQuantity });
                 res.json(result);
             } catch (err: any) {
                 if (err.message.includes('not found')) {
@@ -838,6 +834,7 @@ export class SimulationController {
             }
         });
 
-        app.use('/simulation', router);
+        //app.use('/simulation', router);
+        app.use('/', router);
     }
 }

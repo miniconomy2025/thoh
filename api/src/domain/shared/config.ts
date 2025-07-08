@@ -16,6 +16,7 @@ export function getMarketConfig() {
         name: 'Electronics Machine',
         materialRatio: '4:3', // copper : silicon
         productionRate: 100,
+         materialRatioDescription: 'copper : silicon',
         baseCost: 12000,
         baseWeight: 600
       },
@@ -23,8 +24,9 @@ export function getMarketConfig() {
       // Phone-specific machines
       {
         type: 'ephone_machine',
-        name: 'ePhone Assembly Machine',
-        materialRatio: '1:1:5', // cases : screens : electronics
+        name: 'EPhone Assembly Machine',
+        materialRatio: '1:1:5',
+        materialRatioDescription: 'cases : screens : electronics',
         productionRate: 50,
         baseCost: 15000,
         baseWeight: 500
@@ -32,7 +34,8 @@ export function getMarketConfig() {
       {
         type: 'ephone_plus_machine',
         name: 'ePhone Plus Assembly Machine',
-        materialRatio: '1:2:7', // cases : screens : electronics
+        materialRatio: '1:2:7',
+        materialRatioDescription: 'cases : screens : electronics',
         productionRate: 40,
         baseCost: 18000,
         baseWeight: 550
@@ -40,7 +43,8 @@ export function getMarketConfig() {
       {
         type: 'ephone_pro_max_machine',
         name: 'ePhone Pro Max Assembly Machine',
-        materialRatio: '1:2:10', // cases : screens : electronics
+        materialRatio: '1:2:10',
+        materialRatioDescription: 'cases : screens : electronics',
         productionRate: 30,
         baseCost: 22000,
         baseWeight: 600
@@ -48,7 +52,8 @@ export function getMarketConfig() {
       {
         type: 'cosmos_z25_machine',
         name: 'Cosmos Z25 Assembly Machine',
-        materialRatio: '1:2:5', // cases : screens : electronics
+        materialRatio: '1:2:5',
+        materialRatioDescription: 'cases : screens : electronics',
         productionRate: 45,
         baseCost: 16000,
         baseWeight: 520
@@ -56,7 +61,8 @@ export function getMarketConfig() {
       {
         type: 'cosmos_z25_ultra_machine',
         name: 'Cosmos Z25 Ultra Assembly Machine',
-        materialRatio: '1:3:11', // cases : screens : electronics
+        materialRatio: '1:3:11',
+        materialRatioDescription: 'cases : screens : electronics',
         productionRate: 25,
         baseCost: 25000,
         baseWeight: 650
@@ -64,7 +70,8 @@ export function getMarketConfig() {
       {
         type: 'cosmos_z25_fe_machine',
         name: 'Cosmos Z25 FE Assembly Machine',
-        materialRatio: '1:2:8', // cases : screens : electronics
+        materialRatio: '1:2:8',
+        materialRatioDescription: 'cases : screens : electronics',
         productionRate: 35,
         baseCost: 19000,
         baseWeight: 580
@@ -76,6 +83,7 @@ export function getMarketConfig() {
         name: 'Case Manufacturing Machine',
         materialRatio: '4:7', // plastic : aluminium
         productionRate: 80,
+        materialRatioDescription: 'plastic : aluminium',
         baseCost: 10000,
         baseWeight: 450
       },
@@ -84,6 +92,7 @@ export function getMarketConfig() {
         name: 'Screen Manufacturing Machine',
         materialRatio: '2:7', // copper : sand
         productionRate: 70,
+        materialRatioDescription: 'copper : sand',
         baseCost: 11000,
         baseWeight: 480
       },

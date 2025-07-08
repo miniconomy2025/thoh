@@ -36,8 +36,6 @@ export class PayOrderUseCase {
             };
         }
 
-        order.status = 'completed';
-        
         const updatedOrder = await this.marketRepo.saveOrder(order);
 
         const itemId = fulfillmentResult.itemIds && fulfillmentResult.itemIds.length > 0 ? fulfillmentResult.itemIds[0] : order.itemId;
@@ -47,8 +45,9 @@ export class PayOrderUseCase {
             itemName: order.itemName,
             itemId: itemId,
             quantity: order.quantity,
+            amountCollected: 0,
             orderDate: order.orderDate,
-            collected: false
+            collected: false,
         };
         
         await this.marketRepo.saveCollection(collection);

@@ -17,6 +17,9 @@ export class Collection {
   @Column("decimal", { precision: 12, scale: 2 })
   quantity!: number;
 
+  @Column("decimal", { precision: 12, scale: 2 })
+  amountCollected!: number;
+
   @Column()
   orderDate!: Date;
 
