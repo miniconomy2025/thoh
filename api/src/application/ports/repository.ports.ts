@@ -30,8 +30,8 @@ export interface IMarketRepository {
     collectFromCollection(orderId: number, collectQuantity: number): Promise<any>;
     
     // Inventory update methods
-    markTrucksAsSold(truckType: string, quantity: number): Promise<number[]>;
-    markMachinesAsSold(machineType: string, quantity: number): Promise<number[]>;
+    markTrucksAsSold(vehicleStaticId: number, quantity: number): Promise<number[]>;
+    markMachinesAsSold(machineStaticId: number, quantity: number): Promise<number[]>;
     reduceRawMaterialWeight(materialName: string, weightToReduce: number): Promise<number>;
 }
 

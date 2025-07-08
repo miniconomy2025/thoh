@@ -6,7 +6,7 @@ import { MarketMapper } from './market.mapper';
 
 export class PgMarketRepository implements IMarketRepository {
   async findRawMaterialsMarket(): Promise<RawMaterialsMarket | null> {
-    const result = await pool.query('SELECT * FROM raw_material' );
+    const result = await pool.query('SELECT * FROM raw_materials_market');
     if (result.rows.length === 0) return null;
     return MarketMapper.fromDbRawMaterials({ rawMaterials: result.rows });
   }
@@ -15,20 +15,27 @@ export class PgMarketRepository implements IMarketRepository {
     const materials = market.getRawMaterials();
     for (const m of materials) {
       await pool.query(`
-        INSERT INTO raw_material (name, "costPerKg", "availableWeight")
+        INSERT INTO raw_materials_market (material_static_id, "costPerKg", "availableWeight")
         VALUES ($1, $2, $3)
-      `, [m.name, m.costPerKg, m.availableWeight]);
+      `, [m.material_static_id, m.costPerKg, m.availableWeight]);
     }
   }
 
   async findMachinesMarket(): Promise<MachinesMarket | null> {
-    const result = await pool.query('SELECT * FROM machine');
+    // Join machine_static, machine_material_ratio, and machine_market
+    const result = await pool.query(`
+      SELECT ms.id as static_id, ms.name, ms.description, m.id as machine_id, m.machine_static_id, m.cost, m.weight, m."productionRate", m.quantity,
+             mmr.cases, mmr.screens, mmr.electronics, mmr.copper, mmr.silicon, mmr.plastic, mmr.aluminium, mmr.sand
+      FROM machine_static ms
+      JOIN machine_market m ON ms.id = m.machine_static_id
+      LEFT JOIN machine_material_ratio mmr ON mmr.machine_static_id = m.machine_static_id
+    `);
     if (result.rows.length === 0) return null;
     return await MarketMapper.fromDbMachines({ machines: result.rows });
   }
 
   async saveMachinesMarket(market: MachinesMarket): Promise<void> {
-       const machines = market.getMachinesForSale();
+    const machines = market.getMachinesForSale();
     for (const m of machines) {
       if (!m.cost || typeof m.cost.amount !== 'number' || isNaN(m.cost.amount)) {
         throw new Error('Cannot save machine with null/invalid cost');
@@ -37,22 +44,21 @@ export class PgMarketRepository implements IMarketRepository {
         throw new Error('Cannot save machine with null/invalid weight');
       }
       await pool.query(`
-        INSERT INTO machine (type, cost, weight, "materialRatio", "materialRatioDescription", "productionRate", "quantity")
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        INSERT INTO machine_market (machine_static_id, cost, weight, "materialRatio", "productionRate", "quantity")
+        VALUES ($1, $2, $3, $4, $5, $6)
         ON CONFLICT (id) DO UPDATE SET
-          type = EXCLUDED.type,
+          machine_static_id = EXCLUDED.machine_static_id,
           cost = EXCLUDED.cost,
           weight = EXCLUDED.weight,
           "materialRatio" = EXCLUDED."materialRatio",
-          "materialRatioDescription" = EXCLUDED."materialRatioDescription",
           "productionRate" = EXCLUDED."productionRate",
           "quantity" = EXCLUDED."quantity"
-      `, [ m.type, m.cost.amount, m.weight.value, m.materialRatio, m.materialRatioDescription, m.productionRate, m.quantity]);
+      `, [ m.machineStaticId, m.cost.amount, m.weight.value, JSON.stringify(m.materialRatio), m.productionRate, m.quantity]);
     }
   }
 
   async findTrucksMarket(): Promise<TrucksMarket | null> {
-    const result = await pool.query('SELECT * FROM vehicle');
+    const result = await pool.query('SELECT * FROM vehicle_market');
     if (result.rows.length === 0) return null;
     return await MarketMapper.fromDbTrucks({ trucks: result.rows });
   }
@@ -61,15 +67,15 @@ export class PgMarketRepository implements IMarketRepository {
     const trucks = market.getTrucksForSale();
     for (const t of trucks) {
       await pool.query(`
-        INSERT INTO vehicle ( type, cost, weight, "operatingCostPerDay", quantity)
+        INSERT INTO vehicle_market (vehicle_static_id, cost, weight, "operatingCostPerDay", quantity)
         VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (id) DO UPDATE SET
-          type = EXCLUDED.type,
+          vehicle_static_id = EXCLUDED.vehicle_static_id,
           cost = EXCLUDED.cost,
           weight = EXCLUDED.weight,
           "operatingCostPerDay" = EXCLUDED."operatingCostPerDay",
           quantity = EXCLUDED.quantity
-      `, [t.type, t.cost.amount, t.weight.value, t.operatingCostPerDay.amount, t.quantity]);
+      `, [t.vehicleStaticId, t.cost.amount, t.weight.value, t.operatingCostPerDay.amount, t.quantity]);
     }
   }
 
@@ -91,8 +97,10 @@ export class PgMarketRepository implements IMarketRepository {
           "totalPrice" = $5,
           currency = $6,
           "orderDate" = $7,
-          status = $8
-        WHERE id = $9
+          status = $8,
+          "item_type_id" = $9,
+          "marketId" = $10
+        WHERE id = $11
         RETURNING *
       `, [
         order.itemName,
@@ -103,13 +111,15 @@ export class PgMarketRepository implements IMarketRepository {
         order.currency,
         order.orderDate,
         order.status,
+        order.item_type_id,
+        order.marketId,
         order.id
       ]);
     } else {
       // Insert new order
       result = await pool.query(`
-        INSERT INTO orders ("itemName", "itemId", quantity, "unitPrice", "totalPrice", currency, "orderDate", status)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        INSERT INTO orders ("itemName", "itemId", quantity, "unitPrice", "totalPrice", currency, "orderDate", status, "item_type_id", "marketId")
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING *
       `, [
         order.itemName,
@@ -119,7 +129,9 @@ export class PgMarketRepository implements IMarketRepository {
         order.totalPrice,
         order.currency,
         order.orderDate,
-        order.status
+        order.status,
+        order.item_type_id,
+        order.marketId
       ]);
     }
 
@@ -131,10 +143,12 @@ export class PgMarketRepository implements IMarketRepository {
       Number(savedOrder.totalPrice),
       savedOrder.currency,
       savedOrder.status,
-      savedOrder.itemId
+      savedOrder.itemId,
+      savedOrder.marketId
     );
     newOrder.id = savedOrder.id;
     newOrder.orderDate = new Date(savedOrder.orderDate);
+    newOrder.item_type_id = savedOrder.item_type_id;
     return newOrder;
   }
 
@@ -150,10 +164,12 @@ export class PgMarketRepository implements IMarketRepository {
       Number(orderData.totalPrice),
       orderData.currency,
       orderData.status,
-      orderData.itemId
+      orderData.itemId,
+      orderData.marketId
     );
     order.id = orderData.id;
     order.orderDate = new Date(orderData.orderDate);
+    order.item_type_id = orderData.item_type_id;
     return order;
   }
 
@@ -167,33 +183,33 @@ export class PgMarketRepository implements IMarketRepository {
         Number(orderData.totalPrice),
         orderData.currency,
         orderData.status,
-        orderData.itemId
+        orderData.itemId,
+        orderData.marketId
       );
       order.id = orderData.id;
       order.orderDate = new Date(orderData.orderDate);
+      order.item_type_id = orderData.item_type_id;
       return order;
     });
   }
 
-
-
   // Methods to mark individual items as sold
-  async markTrucksAsSold(truckType: string, quantity: number): Promise<number[]> {
+  async markTrucksAsSold(vehicleStaticId: number, quantity: number): Promise<number[]> {
     // Find available trucks of the specified type that are not sold
     const result = await pool.query(`
-      SELECT id FROM vehicle 
-      WHERE type = $1 AND sold = false 
+      SELECT id FROM vehicle_market 
+      WHERE vehicle_static_id = $1 AND sold = false 
       ORDER BY id 
       LIMIT $2
-    `, [truckType, quantity]);
+    `, [vehicleStaticId, quantity]);
 
     if (result.rows.length < quantity) {
-      throw new Error(`Not enough ${truckType} trucks available. Requested: ${quantity}, Available: ${result.rows.length}`);
+      throw new Error(`Not enough trucks available. Requested: ${quantity}, Available: ${result.rows.length}`);
     }
 
     const truckIds = result.rows.map(row => row.id);
     await pool.query(`
-      UPDATE vehicle 
+      UPDATE vehicle_market 
       SET sold = true 
       WHERE id = ANY($1)
     `, [truckIds]);
@@ -201,21 +217,21 @@ export class PgMarketRepository implements IMarketRepository {
     return truckIds;
   }
 
-  async markMachinesAsSold(machineType: string, quantity: number): Promise<number[]> {
+  async markMachinesAsSold(machineStaticId: number, quantity: number): Promise<number[]> {
     const result = await pool.query(`
-      SELECT id FROM machine 
-      WHERE type = $1 AND sold = false 
+      SELECT id FROM machine_market 
+      WHERE machine_static_id = $1 AND sold = false 
       ORDER BY id 
       LIMIT $2
-    `, [machineType, quantity]);
+    `, [machineStaticId, quantity]);
 
     if (result.rows.length < quantity) {
-      throw new Error(`Not enough ${machineType} machines available. Requested: ${quantity}, Available: ${result.rows.length}`);
+      throw new Error(`Not enough machines available. Requested: ${quantity}, Available: ${result.rows.length}`);
     }
 
     const machineIds = result.rows.map(row => row.id);
     await pool.query(`
-      UPDATE machine 
+      UPDATE machine_market 
       SET sold = true 
       WHERE id = ANY($1)
     `, [machineIds]);
@@ -224,13 +240,24 @@ export class PgMarketRepository implements IMarketRepository {
   }
 
   async reduceRawMaterialWeight(materialName: string, weightToReduce: number): Promise<number> {
-    const result = await pool.query(`
-      SELECT id, "availableWeight", "costPerKg" FROM raw_material 
-      WHERE name = $1
+    // First, look up the material_static_id for the given material name
+    const staticResult = await pool.query(`
+      SELECT id FROM material_static WHERE name = $1
     `, [materialName]);
 
+    if (staticResult.rows.length === 0) {
+      throw new Error(`Material '${materialName}' not found in static table`);
+    }
+    const materialStaticId = staticResult.rows[0].id;
+
+    // Now query raw_materials_market using the material_static_id
+    const result = await pool.query(`
+      SELECT id, "availableWeight", "costPerKg" FROM raw_materials_market 
+      WHERE material_static_id = $1
+    `, [materialStaticId]);
+
     if (result.rows.length === 0) {
-      throw new Error(`Raw material '${materialName}' not found`);
+      throw new Error(`Raw material '${materialName}' not found in market`);
     }
 
     const material = result.rows[0];
@@ -239,13 +266,15 @@ export class PgMarketRepository implements IMarketRepository {
       throw new Error(`Not enough ${materialName} available. Requested: ${weightToReduce}kg, Available: ${material.availableWeight}kg`);
     }
 
-    const insertResult = await pool.query(`
-      INSERT INTO raw_material (name, "costPerKg", "availableWeight")
-      VALUES ($1, $2, $3)
-      RETURNING id, name, "availableWeight"
-    `, [materialName, material.costPerKg, -weightToReduce]);
+    // Update the available weight by reducing it
+    const updateResult = await pool.query(`
+      UPDATE raw_materials_market 
+      SET "availableWeight" = "availableWeight" - $1
+      WHERE material_static_id = $2
+      RETURNING id, "availableWeight"
+    `, [weightToReduce, materialStaticId]);
 
-    return insertResult.rows[0].id;
+    return updateResult.rows[0].id;
   }
 
   async saveCollection(collection: any): Promise<any> {
@@ -290,9 +319,6 @@ export class PgMarketRepository implements IMarketRepository {
   }
 
   async collectFromCollection(orderId: number, collectQuantity: number): Promise<any> {
-    console.log(`[DEBUG] collectFromCollection called with orderId: ${orderId}, collectQuantity: ${collectQuantity}`);
-    
-    // First, get the current state to validate
     const currentCollection = await pool.query(
       'SELECT "amountCollected", quantity, collected FROM collection WHERE "orderId" = $1',
       [orderId]
@@ -303,7 +329,6 @@ export class PgMarketRepository implements IMarketRepository {
     }
     
     const current = currentCollection.rows[0];
-    console.log(`[DEBUG] Current collection state:`, current);
     
     if (current.collected) {
       throw new Error(`Collection for order ${orderId} has already been fully collected`);
@@ -313,24 +338,18 @@ export class PgMarketRepository implements IMarketRepository {
     const totalQuantity = Number(current.quantity);
     const newCollected = currentCollected + collectQuantity;
     
-    console.log(`[DEBUG] currentCollected: ${currentCollected}, totalQuantity: ${totalQuantity}, newCollected: ${newCollected}`);
-    
     if (newCollected > totalQuantity) {
       throw new Error(`Cannot collect ${collectQuantity} items. Would exceed total quantity of ${totalQuantity} (already collected: ${currentCollected}).`);
     }
     
-    // Update with explicit calculation
     const shouldMarkCollected = newCollected === totalQuantity;
     
     if (shouldMarkCollected) {
-      // Mark the order as completed as well
       await pool.query(
         `UPDATE orders SET status = 'completed' WHERE id = $1`,
         [orderId]
       );
     }
-    
-    console.log(`[DEBUG] Updating collection with newCollected: ${newCollected}, shouldMarkCollected: ${shouldMarkCollected}`);
     
     const result = await pool.query(
       `UPDATE collection 
@@ -345,7 +364,6 @@ export class PgMarketRepository implements IMarketRepository {
       throw new Error(`Failed to update collection for order ${orderId}`);
     }
     
-    console.log(`[DEBUG] Updated collection result:`, result.rows[0]);
     return result.rows[0];
   }
 }

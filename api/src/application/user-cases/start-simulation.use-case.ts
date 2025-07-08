@@ -6,9 +6,12 @@ import { Population } from "../../domain/population/population.aggregate";
 import { Money } from "../../domain/shared/value-objects";
 import { Simulation } from "../../domain/simulation/simulation.aggregate";
 import { IMarketRepository, IPopulationRepository, ISimulationRepository } from "../ports/repository.ports";
-import { MachineType, RawMaterialType, TruckType } from "../../domain/market/market.types";
+import { RawMaterialType } from "../../domain/market/market.types";
 import { Weight } from "../../domain/shared/value-objects";
 import { getMarketConfig } from "../../domain/shared/config";
+import { MaterialStaticRepository } from '../../infrastructure/persistence/postgres/material-static.repository';
+import { MachineStaticRepository } from '../../infrastructure/persistence/postgres/machine-static.repository';
+import { VehicleStaticRepository } from '../../infrastructure/persistence/postgres/vehicle-static.repository';
 
 function randomMoney(min: number, max: number): Money {
     return { amount: Math.floor(Math.random() * (max - min + 1)) + min, currency: 'ZAR' };
@@ -33,7 +36,10 @@ export class StartSimulationUseCase {
         private readonly simulationRepo: ISimulationRepository,
         private readonly marketRepo: IMarketRepository,
         private readonly populationRepo: IPopulationRepository,
-        private readonly bankService?: any // Optional, for initial investment
+        private readonly bankService?: any, // Optional, for initial investment
+        private readonly materialStaticRepo = new MaterialStaticRepository(),
+        private readonly machineStaticRepo = new MachineStaticRepository(),
+        private readonly vehicleStaticRepo = new VehicleStaticRepository()
     ) {}
 
     public async execute(): Promise<{ simulationId: number }> {
@@ -41,7 +47,15 @@ export class StartSimulationUseCase {
         const simulationId =  await this.simulationRepo.save(simulation);
         simulation.start();
 
-        const { rawMaterialsMarket, machinesMarket, trucksMarket } = this.createSeededMarkets();
+        // Fetch static tables from the database
+        const materialStatics = await this.materialStaticRepo.findAll();
+        const machineStatics = await this.machineStaticRepo.findAll();
+        const vehicleStatics = await this.vehicleStaticRepo.findAll();
+        const materialNameToId = new Map(materialStatics.map(m => [m.name, m.id]));
+        const machineNameToId = new Map(machineStatics.map(m => [m.name, m.id]));
+        const vehicleNameToId = new Map(vehicleStatics.map(v => [v.name, v.id]));
+
+        const { rawMaterialsMarket, machinesMarket, trucksMarket } = this.createSeededMarkets(materialNameToId, machineNameToId, vehicleNameToId);
         // const population = this.createSeededPopulation(input.numberOfPeople, input.baseSalary, simulationId);
 
         // if (this.bankService && input.initialFunds) {
@@ -57,17 +71,17 @@ export class StartSimulationUseCase {
         return { simulationId };
     }
 
-    private createSeededMarkets(): { rawMaterialsMarket: RawMaterialsMarket, machinesMarket: MachinesMarket, trucksMarket: TrucksMarket } {
+    private createSeededMarkets(materialNameToId: Map<string, number>, machineNameToId: Map<string, number>, vehicleNameToId: Map<string, number>) {
         const marketConfig = getMarketConfig();
         const initialMaterials = marketConfig.rawMaterials.map(
             m => new RawMaterial(
-                m.name as RawMaterialType,
+                materialNameToId.get(m.name)!,
                 m.costPerKg,
                 m.initialWeight
             )
         );
-        const initialMachines = this.createRandomMachines();
-        const initialTrucks = this.createRandomTrucks();
+        const initialMachines = this.createRandomMachines(machineNameToId);
+        const initialTrucks = this.createRandomTrucks(vehicleNameToId);
         return {
             rawMaterialsMarket: new RawMaterialsMarket(initialMaterials),
             machinesMarket: new MachinesMarket(initialMachines),
@@ -75,61 +89,63 @@ export class StartSimulationUseCase {
         };
     }
 
-    private createRandomMachines(): Machine[] {
+    private createRandomMachines(machineNameToId: Map<string, number>): Machine[] {
         const marketConfig = getMarketConfig();
         const machines: Machine[] = [];
         let machineId = 0;
-        
         for (const machineConfig of marketConfig.machines) {
             const instances = Math.floor(Math.random() * 3) + 2; // 2-4 instances
-            
             for (let i = 0; i < instances; i++) {
                 const costVariation = 0.8 + (Math.random() * 0.4); // ±20% variation
                 const weightVariation = 0.9 + (Math.random() * 0.2); // ±10% variation
-                
                 const cost = {
                     amount: Math.floor(machineConfig.baseCost * costVariation),
                     currency: 'ZAR'
                 };
-                
                 const weight: Weight = {
                     value: Math.floor(machineConfig.baseWeight * weightVariation),
                     unit: 'kg'
                 };
-                
                 if (!cost || typeof cost.amount !== 'number' || isNaN(cost.amount)) {
                     console.error('[ERROR] Invalid cost generated for machine:', machineConfig.type);
                     throw new Error('Invalid cost generated for machine');
                 }
-                
+                // Parse materialRatio string and description into an object
+                let materialRatioObj: Record<string, number> = {};
+                if (machineConfig.materialRatio && machineConfig.materialRatioDescription) {
+                    const ratioParts = machineConfig.materialRatio.split(':').map(Number);
+                    const descParts = machineConfig.materialRatioDescription.split(':').map(s => s.trim());
+                    if (ratioParts.length === descParts.length) {
+                        for (let i = 0; i < descParts.length; i++) {
+                            materialRatioObj[descParts[i]] = ratioParts[i];
+                        }
+                    }
+                } else if (machineConfig.materialRatio === 'any_phone') {
+                    materialRatioObj = { any_phone: 1 };
+                }
                 const machine = new Machine(
-                    machineConfig.type as MachineType,
+                    machineNameToId.get(machineConfig.type)!,
                     cost,
                     weight,
-                    machineConfig.materialRatio,
+                    materialRatioObj,
                     machineConfig.productionRate,
                     1, // quantity
                     machineId++,
-                    false,
-                    machineConfig.materialRatioDescription
-
+                    false
                 );
                 machines.push(machine);
             }
         }
-        
-        console.log(`[SIMULATION] Created ${machines.length} machines of ${marketConfig.machines.length} different types`);
         return machines;
     }
 
-    private createRandomTrucks(): Truck[] {
-        const truckTypes: TruckType[] = ['large_truck', 'medium_truck', 'small_truck'];
+    private createRandomTrucks(vehicleNameToId: Map<string, number>): Truck[] {
+        const truckTypes = ['large_truck', 'medium_truck', 'small_truck'];
         const trucks: Truck[] = [];
-        
         for (let i = 0; i < 3; i++) { 
             const type = truckTypes[i];
             const truck = new Truck(
-                type,
+                vehicleNameToId.get(type)!,
                 randomMoney(30000, 70000),
                 randomWeight(1500, 2500),
                 randomMoney(800, 1500),
@@ -138,7 +154,6 @@ export class StartSimulationUseCase {
             );
             trucks.push(truck);
         }
-        
         return trucks;
     }
 

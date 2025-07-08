@@ -1,11 +1,15 @@
 import { IMarketRepository } from '../ports/repository.ports';
+import { ItemTypeRepository } from '../../infrastructure/persistence/postgres/item-type.repository';
 
 export interface PayOrderInput {
     orderId: number;
 }
 
 export class PayOrderUseCase {
-    constructor(private readonly marketRepo: IMarketRepository) {}
+    constructor(
+        private readonly marketRepo: IMarketRepository,
+        private readonly itemTypeRepo = new ItemTypeRepository()
+    ) {}
 
     async execute(input: PayOrderInput) {
         const order = await this.marketRepo.findOrderById(input.orderId);
@@ -64,12 +68,20 @@ export class PayOrderUseCase {
     }
 
     private async checkAndUpdateMarketInventory(order: any): Promise<{ canFulfill: boolean; reason?: string; availableQuantity?: number; itemIds?: number[] }> {
-        const itemName = order.itemName;
+        const itemId = order.itemId;
         const quantity = order.quantity;
 
-        if (this.isTruckType(itemName)) {
+        // Get item type name from item_type_id
+        let itemTypeName: string | null = null;
+        if (order.item_type_id) {
+            const itemTypeResult = await this.itemTypeRepo.findById(order.item_type_id);
+            if (itemTypeResult) {
+                itemTypeName = itemTypeResult.name;
+            }
+        }
+        if (itemTypeName === 'truck') {
             try {
-                const truckIds = await this.marketRepo.markTrucksAsSold(itemName, quantity);
+                const truckIds = await this.marketRepo.markTrucksAsSold(itemId, quantity);
                 return { canFulfill: true, itemIds: truckIds };
             } catch (error: any) {
                 const availableMatch = error.message.match(/Available: (\d+)/);
@@ -80,9 +92,9 @@ export class PayOrderUseCase {
                     availableQuantity
                 };
             }
-        } else if (this.isMachineType(itemName)) {
+        } else if (itemTypeName === 'machine') {
             try {
-                const machineIds = await this.marketRepo.markMachinesAsSold(itemName, quantity);
+                const machineIds = await this.marketRepo.markMachinesAsSold(itemId, quantity);
                 return { canFulfill: true, itemIds: machineIds };
             } catch (error: any) {
                 const availableMatch = error.message.match(/Available: (\d+)/);
@@ -95,7 +107,7 @@ export class PayOrderUseCase {
             }
         } else {
             try {
-                const materialId = await this.marketRepo.reduceRawMaterialWeight(itemName, quantity);
+                const materialId = await this.marketRepo.reduceRawMaterialWeight(order.itemName, quantity);
                 return { canFulfill: true, itemIds: [materialId] };
             } catch (error: any) {
                 return { 
@@ -104,19 +116,5 @@ export class PayOrderUseCase {
                 };
             }
         }
-    }
-
-    private isTruckType(itemName: string): boolean {
-        const truckTypes = ['large_truck', 'medium_truck', 'small_truck'];
-        return truckTypes.includes(itemName);
-    }
-
-    private isMachineType(itemName: string): boolean {
-        const machineTypes = [
-            'electronics_machine', 'ephone_machine', 'ephone_plus_machine', 
-            'ephone_pro_max_machine', 'cosmos_z25_machine', 'cosmos_z25_ultra_machine', 
-            'cosmos_z25_fe_machine', 'case_machine', 'screen_machine', 'recycling_machine'
-        ];
-        return machineTypes.includes(itemName);
     }
 } 

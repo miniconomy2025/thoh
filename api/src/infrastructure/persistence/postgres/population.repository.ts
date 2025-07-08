@@ -13,7 +13,6 @@ export class PgPopulationRepository implements IPopulationRepository {
 
   async save(population: Population): Promise<void> {
     const data = PopulationMapper.toDb(population);
-    // console.log('[Population Change] Saving population data:', JSON.stringify(data, null, 2));
     await pool.query(`
       INSERT INTO population (simulationId)
       VALUES ($1)
