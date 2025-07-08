@@ -17,6 +17,9 @@ export class Simulation {
   @Column({ type: 'timestamptz' })
   startDate!: Date;
 
+  @Column({ type: 'bigint', nullable: true })
+  unixEpochStartTime!: number;
+
   // @Column({ type: 'timestamptz' })
   // end!: Date;
 
@@ -28,10 +31,11 @@ export class Simulation {
     this.status = 'running';
     this.currentDay = 1;
     this.startDate = new Date(this.startDate);
+    this.unixEpochStartTime = Date.now();
   }
 
   end() {
-    this.status = 'ended';
+    this.status = 'completed';
   }
   
   getCurrentSimDate() {
@@ -40,6 +44,10 @@ export class Simulation {
 
   getCurrentSimDateString() {
     return this.getCurrentSimDate().toISOString().split('T')[0];
+  }
+
+  getUnixEpochStartTime(): number {
+    return this.unixEpochStartTime;
   }
   // Add more columns as needed, e.g.:
   // @Column()

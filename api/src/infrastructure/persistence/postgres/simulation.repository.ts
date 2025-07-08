@@ -14,26 +14,29 @@ export class PgSimulationRepository implements ISimulationRepository {
     const data = SimulationMapper.toDb(simulation);
     if (!simulation.id || simulation.id === 0) {
       const result = await pool.query(`
-        INSERT INTO simulation (status, "currentDay")
-        VALUES ($1, $2)
+        INSERT INTO simulation (status, "currentDay", "unixEpochStartTime")
+        VALUES ($1, $2, $3)
         RETURNING id
       `, [
         data.status,
-        data.currentDay
+        data.currentDay,
+        data.unixEpochStartTime
       ]);
       return result.rows[0].id;
     } else {
       const result = await pool.query(`
-        INSERT INTO simulation (id, status, "currentDay")
-        VALUES ($1, $2, $3)
+        INSERT INTO simulation (id, status, "currentDay", "unixEpochStartTime")
+        VALUES ($1, $2, $3, $4)
         ON CONFLICT (id) DO UPDATE SET
           status = EXCLUDED.status,
-          "currentDay" = EXCLUDED."currentDay"
+          "currentDay" = EXCLUDED."currentDay",
+          "unixEpochStartTime" = EXCLUDED."unixEpochStartTime"
         RETURNING id
       `, [
         simulation.id,
         data.status,
-        data.currentDay
+        data.currentDay,
+        data.unixEpochStartTime
       ]);
       return result.rows[0].id;
     }

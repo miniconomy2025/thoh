@@ -44,8 +44,8 @@ export class StartSimulationUseCase {
 
     public async execute(): Promise<{ simulationId: number }> {
         const simulation = new Simulation();
-        const simulationId =  await this.simulationRepo.save(simulation);
-        simulation.start();
+        simulation.start();  // Start first to set unix epoch time
+        const simulationId = await this.simulationRepo.save(simulation);  // Then save
 
         // Fetch static tables from the database
         const materialStatics = await this.materialStaticRepo.findAll();

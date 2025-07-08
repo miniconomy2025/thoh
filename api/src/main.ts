@@ -24,6 +24,7 @@ import { GetOrdersUseCase } from './application/user-cases/get-orders.use-case';
 import { PayOrderUseCase } from './application/user-cases/pay-order.use-case';
 import { GetCollectionsUseCase } from './application/user-cases/get-collections.use-case';
 import { CollectItemUseCase } from './application/user-cases/collect-item.use-case';
+import { StopSimulationUseCase } from './application/user-cases/stop-simulation.use-case';
 
 
 async function initializeApp() {
@@ -39,6 +40,8 @@ async function initializeApp() {
         populationRepo,
         bankService
     );
+
+    const stopSimulationUseCase = new StopSimulationUseCase(simulationRepo);
 
     const distributeSalariesUseCase = new DistributeSalariesUseCase(
         populationRepo,
@@ -65,6 +68,7 @@ async function initializeApp() {
     // Instantiate the Primary Adapter (the API Controller)
     const simulationController = new SimulationController(
         startSimulationUseCase,
+        stopSimulationUseCase,
         distributeSalariesUseCase,
         getMarketStateUseCase,
         getPeopleStateUseCase,
