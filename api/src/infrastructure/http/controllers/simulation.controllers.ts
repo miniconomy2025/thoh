@@ -105,7 +105,7 @@ export class SimulationController {
                     }
                 }
 
-                res.status(201).json({ message: `Simulation started successfully and daily job started. Generated simulationId: ${simulation.id}` });
+                res.status(201).json({ message: `Simulation started successfully and daily job started. Generated simulationId: ${simulation.id}`, simulationId });
             } catch (error: any) {
                 console.error(error);
                 res.status(500).json({ error: 'Failed to start simulation.', details: error.message });
