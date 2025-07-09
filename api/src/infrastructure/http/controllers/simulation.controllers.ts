@@ -19,6 +19,7 @@ import { runDailyTasks, SIM_DAY_INTERVAL_MS } from '../../scheduling/daily-tasks
 import { IMarketRepository } from '../../../application/ports/repository.ports';
 import { PgCurrencyRepository } from '../../persistence/postgres/currency.repository';
 import { StopSimulationUseCase } from '../../../application/user-cases/stop-simulation.use-case';
+import axios from 'axios';
 
 export class SimulationController {
     private dailyJobInterval: NodeJS.Timeout | null = null;
@@ -836,12 +837,23 @@ export class SimulationController {
 
         /**
          * @openapi
-         * /machine-failure:
-         *   get:
-         *     summary: Generate a random machine failure event
+         * /machine/failure:
+         *   post:
+         *     summary: Forward machine failure event to another application
+         *     requestBody:
+         *       required: true
+         *       content:
+         *         application/json:
+         *           schema:
+         *             type: object
+         *             properties:
+         *               targetUrl:
+         *                 type: string
+         *                 description: URL of the target application's endpoint
+         *                 example: "http://other-app.com/api/machine-failure"
          *     responses:
          *       200:
-         *         description: Random machine failure event details
+         *         description: Machine failure event details
          *         content:
          *           application/json:
          *             schema:
@@ -864,15 +876,21 @@ export class SimulationController {
          *                   description: Current simulation time
          *                   example: "14:30:45"
          *       400:
-         *         description: Simulation not running or no machines available
+         *         description: Invalid request or simulation not running
          *       500:
-         *         description: Error generating failure event
+         *         description: Error forwarding event
          */
-        router.get('/machine-failure', async (req, res) => {
+        router.post('/machine/failure', async (req, res) => {
             if (!this.validateSimulationRunning(res)) return;
-            
+
             try {
-                // Get all available machines
+                const { targetUrl } = req.body;
+
+                if (!targetUrl) {
+                    return res.status(400).json({ error: 'Target URL is required' });
+                }
+
+                // Get machine failure data
                 const machinesResponse = await this.getMachinesUseCase.execute();
                 const machines = machinesResponse.machines;
                 
@@ -880,25 +898,33 @@ export class SimulationController {
                     return res.status(400).json({ error: 'No machines available in the system' });
                 }
 
-                // Randomly select a machine
+                // Generate failure event
                 const randomMachine = machines[Math.floor(Math.random() * machines.length)];
-                
-                // Generate random failure quantity (between 1 and 10)
                 const failureQuantity = Math.floor(Math.random() * 10) + 1;
 
-                // Get current simulation date and time
                 const simulation = await this.simulationRepo.findById(this.simulationId!);
                 if (!simulation) {
                     throw new Error('Simulation not found');
                 }
 
-                // Return the failure event
-                res.json({
+                // Create failure event data
+                const failureEvent = {
                     machineName: randomMachine.machineName,
                     failureQuantity: failureQuantity,
                     simulationDate: simulation.getCurrentSimDateString(),
                     simulationTime: simulation.getCurrentSimTime()
-                });
+                };
+
+                // Forward to target application
+                try {
+                    await axios.post(targetUrl, failureEvent);
+                    res.json(failureEvent);
+                } catch (forwardError: any) {
+                    res.status(500).json({
+                        error: 'Failed to forward machine failure event',
+                        details: forwardError.message
+                    });
+                }
             } catch (err: any) {
                 res.status(500).json({ error: err.message });
             }
@@ -906,12 +932,23 @@ export class SimulationController {
 
         /**
          * @openapi
-         * /truck-failure:
-         *   get:
-         *     summary: Generate a random truck failure event
+         * /truck/failure:
+         *   post:
+         *     summary: Forward truck failure event to another application
+         *     requestBody:
+         *       required: true
+         *       content:
+         *         application/json:
+         *           schema:
+         *             type: object
+         *             properties:
+         *               targetUrl:
+         *                 type: string
+         *                 description: URL of the target application's endpoint
+         *                 example: "http://other-app.com/api/truck-failure"
          *     responses:
          *       200:
-         *         description: Random truck failure event details
+         *         description: Truck failure event details
          *         content:
          *           application/json:
          *             schema:
@@ -934,46 +971,59 @@ export class SimulationController {
          *                   description: Current simulation time
          *                   example: "14:30:45"
          *       400:
-         *         description: Simulation not running or no trucks available
+         *         description: Invalid request or simulation not running
          *       500:
-         *         description: Error generating failure event
+         *         description: Error forwarding event
          */
-        router.get('/truck-failure', async (req, res) => {
+        router.post('/truck/failure', async (req, res) => {
             if (!this.validateSimulationRunning(res)) return;
-            
+
             try {
-                // Get all available trucks
+                const { targetUrl } = req.body;
+
+                if (!targetUrl) {
+                    return res.status(400).json({ error: 'Target URL is required' });
+                }
+
+                // Get truck failure data
                 const trucks = await this.getTrucksUseCase.execute();
                 
                 if (!trucks || trucks.length === 0) {
                     return res.status(400).json({ error: 'No trucks available in the system' });
                 }
 
-                // Randomly select a truck
+                // Generate failure event
                 const randomTruck = trucks[Math.floor(Math.random() * trucks.length)];
-                
-                // Generate random failure quantity (between 1 and 5)
                 const failureQuantity = Math.floor(Math.random() * 5) + 1;
 
-                // Get current simulation date and time
                 const simulation = await this.simulationRepo.findById(this.simulationId!);
                 if (!simulation) {
                     throw new Error('Simulation not found');
                 }
 
-                // Return the failure event
-                res.json({
+                // Create failure event data
+                const failureEvent = {
                     truckName: randomTruck.truckName,
                     failureQuantity: failureQuantity,
                     simulationDate: simulation.getCurrentSimDateString(),
                     simulationTime: simulation.getCurrentSimTime()
-                });
+                };
+
+                // Forward to target application
+                try {
+                    await axios.post(targetUrl, failureEvent);
+                    res.json(failureEvent);
+                } catch (forwardError: any) {
+                    res.status(500).json({
+                        error: 'Failed to forward truck failure event',
+                        details: forwardError.message
+                    });
+                }
             } catch (err: any) {
                 res.status(500).json({ error: err.message });
             }
         });
 
-        //app.use('/simulation', router);
         app.use('/', router);
     }
 }
