@@ -107,7 +107,6 @@ export class MachinesMarket {
             if (!Number.isFinite(machine.cost.amount) || isNaN(machine.cost.amount)) {
                 throw new Error('Invalid machine cost after randomness');
             }
-            console.debug('[DEBUG] Machine after randomness:', machine);
         }
     }
 

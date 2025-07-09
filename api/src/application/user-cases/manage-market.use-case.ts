@@ -7,7 +7,7 @@ export class ManageMarketUseCase {
     async updateMaterialPrice(materialType: RawMaterialType, newPrice: number): Promise<void> {
         const rawMaterialsMarket = await this.marketRepo.findRawMaterialsMarket();
         if (!rawMaterialsMarket) throw new Error('Raw materials market not found');
-        rawMaterialsMarket.updateMaterialPrice(materialType, newPrice);
+        rawMaterialsMarket.updateMaterialPrice(Number(materialType), newPrice);
         await this.marketRepo.saveRawMaterialsMarket(rawMaterialsMarket);
     }
 }

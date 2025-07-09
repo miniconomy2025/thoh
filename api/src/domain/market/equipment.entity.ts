@@ -45,6 +45,7 @@ export class Machine extends Equipment {
 export class Truck extends Equipment {
     public readonly operatingCostPerDay: Money;
     public readonly quantity: number;
+    
     sold: boolean;
 
     constructor(vehicleStaticId: number, cost: Money, weight: Weight, operatingCost: Money, quantity: number, id: number, sold: boolean = false) {

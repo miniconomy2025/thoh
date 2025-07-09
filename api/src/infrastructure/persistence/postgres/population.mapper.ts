@@ -9,9 +9,9 @@ export const PopulationMapper = {
     };
   },
 
-  fromDb(data: any) {
+  fromDb(data: Record<string, unknown>) {
     // const people = Array.isArray(data.people)
-    //   ? data.people.map((p: any) => {
+    //   ? data.people.map((p: Record<string, unknown>) => {
     //       const salary = { amount: p.salary.amount, currency: p.salary.currency };
     //       const phone = p.phone ? new Phone(p.phone.model) : null;
     //       if (phone && p.phoneWorking === false) phone.break();

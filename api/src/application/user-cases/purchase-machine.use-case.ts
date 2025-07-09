@@ -2,6 +2,7 @@ import { IMarketRepository } from '../ports/repository.ports';
 import { Order } from '../../domain/market/order.entity';
 import { MachineStaticRepository } from '../../infrastructure/persistence/postgres/machine-static.repository';
 import { ItemTypeRepository } from '../../infrastructure/persistence/postgres/item-type.repository';
+import { MachineStatic } from '../../domain/market/machine-static.entity';
 
 export interface PurchaseMachineInput {
     machineName: string;
@@ -24,10 +25,10 @@ export class PurchaseMachineUseCase {
 
         const machines = machinesMarket.getMachinesForSale();
         const staticMachines = await this.machineStaticRepo.findAll();
-        const staticLookup = new Map(staticMachines.map((sm: any) => [sm.id, sm]));
+        const staticLookup = new Map(staticMachines.map((sm: MachineStatic) => [sm.id, sm]));
 
         // Find the static machine by name
-        const staticMachine = staticMachines.find((sm: any) => sm.name === input.machineName);
+        const staticMachine = staticMachines.find((sm: MachineStatic) => sm.name === input.machineName);
         if (!staticMachine) {
             throw new Error(`Machine '${input.machineName}' not found in static table`);
         }
@@ -61,11 +62,10 @@ export class PurchaseMachineUseCase {
         return {
             orderId: savedOrder.id,
             machineName: staticMachine.name,
-            quantity: input.quantity,
             totalPrice: totalPrice,
-            unitPrice: machine.cost.amount,
             unitWeight: machine.weight.value,
-            weight: machine.weight.value * input.quantity,
+            totalWeight: machine.weight.value * input.quantity,
+            quantity: input.quantity,
             machineDetails: {
                 requiredMaterials: machine.materialRatio ? Object.keys(machine.materialRatio).join(', ') : 'None',
                 inputRatio: machine.materialRatio,

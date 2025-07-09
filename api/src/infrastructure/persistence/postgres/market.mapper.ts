@@ -20,12 +20,16 @@ export const MarketMapper = {
       })) : []
     };
   },
-  fromDbRawMaterials(data: any) {
+  fromDbRawMaterials(data: { rawMaterials: Record<string, unknown>[] }) {
     const rawMaterials = Array.isArray(data.rawMaterials)
-      ? data.rawMaterials.map((m: any) => {
-          const costPerKg = typeof m.costPerKg === 'object' ? m.costPerKg.amount : Number(m.costPerKg);
-          const availableWeight = typeof m.availableWeight === 'object' ? m.availableWeight.value : Number(m.availableWeight);
-          return new RawMaterial(m.material_static_id, costPerKg, availableWeight);
+      ? data.rawMaterials.map((m: Record<string, unknown>) => {
+          const costPerKg = Number(m.costPerKg);
+          const availableWeight = Number(m.availableWeight);
+          return new RawMaterial(
+            Number(m.material_static_id),
+            costPerKg,
+            availableWeight
+          );
         })
       : [];
     return new RawMaterialsMarket(rawMaterials);
@@ -43,20 +47,12 @@ export const MarketMapper = {
       })) : []
     };
   },
-  async fromDbMachines(data: any) {
+  async fromDbMachines(data: { machines: Record<string, unknown>[] }) {
     const defaultCurrency = await this.getDefaultCurrency();
     const machines = Array.isArray(data.machines)
-      ? data.machines.map((m: any) => {
+      ? data.machines.map((m: Record<string, unknown>) => {
           const costAmount = Number(m.cost);
           const weightValue = Number(m.weight);
-          if (!Number.isFinite(costAmount) || isNaN(costAmount)) {
-            console.error('[ERROR] Invalid machine cost loaded from DB:', m);
-            throw new Error('Invalid machine cost loaded from DB');
-          }
-          if (!Number.isFinite(weightValue) || isNaN(weightValue)) {
-            console.error('[ERROR] Invalid machine weight loaded from DB:', m);
-            throw new Error('Invalid machine weight loaded from DB');
-          }
           // Build materialRatio object from columns
           const materialRatio: Record<string, number> = {};
           const ratioFields = ['cases', 'screens', 'electronics', 'copper', 'silicon', 'plastic', 'aluminium', 'sand'];
@@ -65,18 +61,16 @@ export const MarketMapper = {
               materialRatio[field] = Number(m[field]);
             }
           }
-          // Construct Machine instance
-          const machine = new Machine(
-            m.machine_static_id,
+          return new Machine(
+            m.machine_static_id as number,
             { amount: costAmount, currency: defaultCurrency },
             { value: weightValue, unit: 'kg' },
             materialRatio,
-            m.productionRate || 100,
-            m.quantity || 1,
-            m.machine_id,
+            m.productionRate ? Number(m.productionRate) : 100,
+            m.quantity ? Number(m.quantity) : 1,
+            m.machine_id as number,
             m.sold !== undefined ? !!m.sold : false
           );
-          return machine;
         })
       : [];
     return new MachinesMarket(machines);
@@ -93,35 +87,22 @@ export const MarketMapper = {
       })) : []
     };
   },
-  async fromDbTrucks(data: any) {
+  async fromDbTrucks(data: { trucks: Record<string, unknown>[] }) {
     const defaultCurrency = await this.getDefaultCurrency();
     const trucks = Array.isArray(data.trucks)
-      ? data.trucks.map((t: any) => {
+      ? data.trucks.map((t: Record<string, unknown>) => {
           const costAmount = Number(t.cost);
           const weightValue = Number(t.weight);
           const opCostAmount = Number(t.operatingCostPerDay);
-          if (!Number.isFinite(costAmount) || isNaN(costAmount)) {
-            console.error('[ERROR] Invalid truck cost loaded from DB:', t);
-            throw new Error('Invalid truck cost loaded from DB');
-          }
-          if (!Number.isFinite(weightValue) || isNaN(weightValue)) {
-            console.error('[ERROR] Invalid truck weight loaded from DB:', t);
-            throw new Error('Invalid truck weight loaded from DB');
-          }
-          if (!Number.isFinite(opCostAmount) || isNaN(opCostAmount)) {
-            console.error('[ERROR] Invalid truck operating cost loaded from DB:', t);
-            throw new Error('Invalid truck operating cost loaded from DB');
-          }
-          const truck = new Truck(
-            t.vehicle_static_id,
+          return new Truck(
+            t.vehicle_static_id as number,
             { amount: costAmount, currency: defaultCurrency },
             { value: weightValue, unit: 'kg' },
             { amount: opCostAmount, currency: defaultCurrency },
-            t.quantity || 1,
-            t.id
+            t.quantity ? Number(t.quantity) : 1,
+            t.id as number,
+            t.sold !== undefined ? !!t.sold : false
           );
-          truck.sold = t.sold !== undefined ? !!t.sold : false;
-          return truck;
         })
       : [];
     return new TrucksMarket(trucks);

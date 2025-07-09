@@ -4,9 +4,9 @@ import { Currency } from '../../../domain/population/currency.entity';
 export class PgCurrencyRepository {
   async findAll(): Promise<Currency[]> {
     const result = await pool.query('SELECT * FROM currency');
-    return result.rows.map((row: any) => ({
-      code: row.code,
-      description: row.description
+    return result.rows.map((row: Record<string, unknown>) => ({
+      code: row.code as string,
+      description: row.description as string,
     }));
   }
 
