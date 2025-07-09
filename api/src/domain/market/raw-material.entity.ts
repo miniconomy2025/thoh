@@ -1,13 +1,13 @@
 import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
 import { RawMaterialType } from "./market.types";
 
-@Entity({ name: "raw_material" })
+@Entity({ name: "raw_materials_market" })
 export class RawMaterial {
     @PrimaryGeneratedColumn()
     id!: number;
 
-    @Column()
-    name!: string;
+    @Column({ nullable: true })
+    material_static_id?: number;
 
     @Column("decimal", { precision: 12, scale: 2 })
     costPerKg!: number;
@@ -15,14 +15,10 @@ export class RawMaterial {
     @Column("decimal", { precision: 12, scale: 2 })
     availableWeight!: number;
 
-    constructor(name: RawMaterialType, costPerKg: number, availableWeight: number) {
-        this.name = name;
+    constructor(material_static_id: number, costPerKg: number, availableWeight: number) {
+        this.material_static_id = material_static_id;
         this.costPerKg = costPerKg;
         this.availableWeight = availableWeight;
-    }
-
-    get rawMaterialName(): string {
-        return this.name;
     }
 
     get pricePerKg(): number {
@@ -42,8 +38,6 @@ export class RawMaterial {
 
     public adjustAvailability(changeInWeight: number): void {
         const newWeight = Number(changeInWeight);
-
-        console.log(`[RAW MATERIAL] Adjusting availability of ${this.name} by ${changeInWeight} kg. New weight: ${newWeight} kg`);
         this.availableWeight = newWeight;
     }
 }

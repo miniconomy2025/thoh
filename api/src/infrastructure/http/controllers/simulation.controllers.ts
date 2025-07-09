@@ -97,7 +97,6 @@ export class SimulationController {
                             if (this.simulationId) {
                                 try {
                                     await this.advanceSimulationDayUseCase.execute(this.simulationId);
-                                    console.log('Simulation day advanced via scheduled job');
                                 } catch (err) {
                                     console.error('Failed to advance simulation day:', err);
                                 }

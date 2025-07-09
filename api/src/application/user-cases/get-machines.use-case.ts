@@ -1,7 +1,9 @@
 import { IMarketRepository } from '../ports/repository.ports';
+import { MachineStatic } from '../../domain/market/machine-static.entity';
+import { MachineStaticRepository } from '../../infrastructure/persistence/postgres/machine-static.repository';
 
 export class GetMachinesUseCase {
-    constructor(private readonly marketRepo: IMarketRepository) {}
+    constructor(private readonly marketRepo: IMarketRepository, private readonly machineStaticRepo = new MachineStaticRepository()) {}
 
     async execute() {
         const machinesMarket = await this.marketRepo.findMachinesMarket();
@@ -15,31 +17,33 @@ export class GetMachinesUseCase {
             return { machines: [] };
         }
 
+        // Fetch all static machine data from the DB
+        const staticMachines = await this.machineStaticRepo.findAll();
+        const staticLookup = new Map(staticMachines.map((sm: any) => [sm.id, sm]));
+
         const machineGroups = new Map<string, any[]>();
         
         machines.forEach(machine => {
-            const machineName = machine.machineName;
+            const staticData = staticLookup.get(machine.machineStaticId);
+            const machineName = staticData?.name || `machine_${machine.machineStaticId}`;
             if (!machineGroups.has(machineName)) {
                 machineGroups.set(machineName, []);
             }
-            machineGroups.get(machineName)!.push(machine);
+            machineGroups.get(machineName)!.push({ ...machine, staticData });
         });
 
         const machinesResponse = Array.from(machineGroups.entries()).map(([machineName, machineList]) => {
             const totalQuantity = machineList.reduce((sum, machine) => sum + machine.quantity, 0);
-            
             const materialRatio = machineList[0].materialRatio;
-            const materialRatioDescription = machineList[0].materialRatioDescription;
-            
             const totalProductionRate = machineList.reduce((sum, machine) => sum + machine.productionRate, 0);
             const averageProductionRate = Math.round(totalProductionRate / machineList.length);
             const averagePrice = Math.round(machineList.reduce((sum, machine) => sum + (machine.cost?.amount ?? 0), 0) / machineList.length);
 
             return {
                 machineName: machineName,
+                inputs: machineList[0].staticData?.description,
                 quantity: totalQuantity,
-                materialRatio: materialRatio,
-                materialRatioDescription: materialRatioDescription,
+                inputRatio: materialRatio,
                 productionRate: averageProductionRate,
                 price: averagePrice
             };

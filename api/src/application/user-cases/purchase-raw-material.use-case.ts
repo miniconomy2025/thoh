@@ -1,5 +1,7 @@
 import { IMarketRepository } from '../ports/repository.ports';
 import { Order } from '../../domain/market/order.entity';
+import { MaterialStaticRepository } from '../../infrastructure/persistence/postgres/material-static.repository';
+import { ItemTypeRepository } from '../../infrastructure/persistence/postgres/item-type.repository';
 
 export interface PurchaseRawMaterialInput {
     materialName: string;
@@ -8,7 +10,11 @@ export interface PurchaseRawMaterialInput {
 }
 
 export class PurchaseRawMaterialUseCase {
-    constructor(private readonly marketRepo: IMarketRepository) {}
+    constructor(
+        private readonly marketRepo: IMarketRepository, 
+        private readonly materialStaticRepo = new MaterialStaticRepository(),
+        private readonly itemTypeRepo = new ItemTypeRepository()
+    ) {}
 
     async execute(input: PurchaseRawMaterialInput) {
         const rawMaterialsMarket = await this.marketRepo.findRawMaterialsMarket();
@@ -16,33 +22,40 @@ export class PurchaseRawMaterialUseCase {
             throw new Error('Raw materials market not found');
         }
 
+        // Look up the static ID for the material name
+        const staticMaterials = await this.materialStaticRepo.findAll();
+        const staticMaterial = staticMaterials.find((sm: any) => sm.name === input.materialName);
+        if (!staticMaterial) {
+            throw new Error(`Material '${input.materialName}' not found in static table`);
+        }
+        const materialStaticId = staticMaterial.id;
+
         try {
-            const result = await rawMaterialsMarket.checkRawMaterialAvailability(input.materialName, input.weightQuantity);
+            const result = await rawMaterialsMarket.checkRawMaterialAvailability(materialStaticId, input.weightQuantity);
             
             const pricePerKg = result.amount / input.weightQuantity;
             
             const order = new Order(
-                input.materialName,
+                staticMaterial.name,
                 input.weightQuantity,
                 pricePerKg,
                 result.amount,
                 result.currency,
                 'pending', // Start with pending status
-                result.materialId // Add the raw material ID
+                result.materialId, // Add the raw material ID
+                3 // Raw materials market ID
             );
+            order.item_type_id = await this.itemTypeRepo.findRawMaterialTypeId();
             
             if (input.simulationDate) {
-                console.log(`[DEBUG] Setting order date to simulation date: ${input.simulationDate}`);
                 order.orderDate = input.simulationDate;
-            } else {
-                console.log(`[DEBUG] No simulation date provided, using system date: ${new Date()}`);
-            }
+            } 
             
             const savedOrder = await this.marketRepo.saveOrder(order);
             
             return {
                 orderId: savedOrder.id,
-                materialName: input.materialName,
+                materialName: staticMaterial.name,
                 weightQuantity: input.weightQuantity,
                 price: result.amount,
                 bankAccount: "TREASURY_ACCOUNT"

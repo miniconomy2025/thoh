@@ -1,7 +1,9 @@
 import { IMarketRepository } from '../ports/repository.ports';
+import { MaterialStatic } from '../../domain/market/material-static.entity';
+import { MaterialStaticRepository } from '../../infrastructure/persistence/postgres/material-static.repository';
 
 export class GetRawMaterialsUseCase {
-    constructor(private readonly marketRepo: IMarketRepository) {}
+    constructor(private readonly marketRepo: IMarketRepository, private readonly materialStaticRepo = new MaterialStaticRepository()) {}
 
     async execute() {
         const rawMaterialsMarket = await this.marketRepo.findRawMaterialsMarket();
@@ -15,25 +17,29 @@ export class GetRawMaterialsUseCase {
             return [];
         }
 
+        // Fetch all static material data from the DB
+        const staticMaterials = await this.materialStaticRepo.findAll();
+        const staticLookup = new Map(staticMaterials.map((sm: any) => [sm.id, sm]));
+
         const materialGroups = new Map<string, any[]>();
         
         rawMaterials.forEach(material => {
-            const materialName = material.rawMaterialName;
+            if (material.material_static_id === undefined) return;
+            const staticData = staticLookup.get(material.material_static_id);
+            const materialName = staticData?.name || `material_${material.material_static_id}`;
             if (!materialGroups.has(materialName)) {
                 materialGroups.set(materialName, []);
             }
-            materialGroups.get(materialName)!.push(material);
+            materialGroups.get(materialName)!.push({
+                costPerKg: material.costPerKg,
+                pricePerKg: material.pricePerKg,
+                quantityAvailable: material.quantityAvailable,
+                staticData
+            });
         });
 
         const rawMaterialsResponse = Array.from(materialGroups.entries()).map(([materialName, materialList]) => {
             const totalQuantity = materialList.reduce((sum, material) => sum + material.quantityAvailable, 0);
-            
-            console.log(`[DEBUG] Material ${materialName} prices:`, materialList.map(m => ({ 
-                name: m.name, 
-                costPerKg: m.costPerKg, 
-                pricePerKg: m.pricePerKg,
-                quantity: m.quantityAvailable 
-            })));
             
             const totalPricePerKg = materialList.reduce((sum, material) => {
                 const price = Number(material.pricePerKg);
@@ -44,6 +50,7 @@ export class GetRawMaterialsUseCase {
 
             return {
                 rawMaterialName: materialName,
+                description: materialList[0].staticData?.description,
                 pricePerKg: averagePricePerKg,
                 quantityAvailable: Math.floor(totalQuantity)
             };
