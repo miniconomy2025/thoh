@@ -1,12 +1,12 @@
 import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
 
-@Entity({ name: "vehicle" })
+@Entity({ name: "vehicle_market" })
 export class Truck {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column()
-  type!: string;
+  @Column({ nullable: true })
+  vehicle_static_id?: number;
 
   @Column("decimal", { precision: 12, scale: 2 })
   cost!: number;

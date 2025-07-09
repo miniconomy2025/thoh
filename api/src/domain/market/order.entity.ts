@@ -31,6 +31,15 @@ export class Order {
     @Column()
     status!: OrderStatus;
 
+    @Column({ nullable: true })
+    itemType?: string;
+
+    @Column({ nullable: true })
+    item_type_id?: number;
+
+    @Column({ nullable: true })
+    marketId?: number;
+
     constructor(
         itemName: string,
         quantity: number,
@@ -38,7 +47,8 @@ export class Order {
         totalPrice: number,
         currency: string = 'D',
         status: OrderStatus = 'completed',
-        itemId?: number
+        itemId?: number,
+        marketId?: number
     ) {
         this.itemName = itemName;
         this.quantity = quantity;
@@ -48,5 +58,6 @@ export class Order {
         this.orderDate = new Date(); // Will be overridden by simulation date if provided
         this.status = status;
         this.itemId = itemId || 0;
+        this.marketId = marketId;
     }
 } 

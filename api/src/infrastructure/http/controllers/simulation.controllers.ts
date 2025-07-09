@@ -24,7 +24,6 @@ export class SimulationController {
     private dailyJobInterval: NodeJS.Timeout | null = null;
     private simulationId?: number;
     private advanceSimulationDayUseCase: AdvanceSimulationDayUseCase;
-    private currencyRepo: PgCurrencyRepository;
 
     constructor(
         private readonly startSimulationUseCase: StartSimulationUseCase,
@@ -43,12 +42,11 @@ export class SimulationController {
         private readonly payOrderUseCase: PayOrderUseCase,
         private readonly getCollectionsUseCase: GetCollectionsUseCase,
         private readonly collectItemUseCase: CollectItemUseCase,
-        private readonly simulationRepo: any,
+        private readonly simulationRepo: unknown,
         private readonly marketRepo: IMarketRepository,
-        private readonly populationRepo: any
+        private readonly populationRepo: unknown
     ) {
-        this.advanceSimulationDayUseCase = new AdvanceSimulationDayUseCase(this.simulationRepo, this.marketRepo);
-        this.currencyRepo = new PgCurrencyRepository();
+        this.advanceSimulationDayUseCase = new AdvanceSimulationDayUseCase(this.simulationRepo as any, this.marketRepo);
     }
 
     private validateSimulationRunning(res: Response): boolean {
@@ -81,7 +79,7 @@ export class SimulationController {
             try {
                 const { simulationId } = await this.startSimulationUseCase.execute();
                 this.simulationId = simulationId;
-                const simulation = await this.simulationRepo.findById(simulationId);
+                const simulation = await (this.simulationRepo as any).findById(simulationId);
                 // Start daily job if not already running
                 if (!this.dailyJobInterval) {
                     const rawMaterialsMarket = await this.marketRepo.findRawMaterialsMarket();
@@ -97,8 +95,7 @@ export class SimulationController {
                             if (this.simulationId) {
                                 try {
                                     await this.advanceSimulationDayUseCase.execute(this.simulationId);
-                                    console.log('Simulation day advanced via scheduled job');
-                                } catch (err) {
+                                } catch (err: unknown) {
                                     console.error('Failed to advance simulation day:', err);
                                 }
                             }
@@ -106,10 +103,10 @@ export class SimulationController {
                     }
                 }
 
-                res.status(201).json({ message: `Simulation started successfully and daily job started. Generated simulationId: ${simulation.id}` });
+                res.status(201).json({ message: `Simulation started successfully and daily job started. Generated simulationId: ${simulation.id}`, simulationId });
             } catch (error: any) {
                 console.error(error);
-                res.status(500).json({ error: 'Failed to start simulation.', details: error.message });
+                res.status(500).json({ error: 'Failed to start simulation.', details: (error as Error).message });
             }
         });
 
@@ -130,8 +127,8 @@ export class SimulationController {
             try {
                 const state = await this.getPeopleStateUseCase.execute();
                 res.json(state);
-            } catch (err: any) {
-                res.status(500).json({ error: err.message });
+            } catch (err: unknown) {
+                res.status(500).json({ error: (err as Error).message });
             }
         });
 
@@ -160,13 +157,13 @@ export class SimulationController {
             if (!this.validateSimulationRunning(res)) return;
             
             try {
-                const simulation = await this.simulationRepo.findById(this.simulationId!);
+                const simulation = await (this.simulationRepo as any).findById(this.simulationId!);
                 if (!simulation) {
                     throw new Error('Simulation not found');
                 }
                 res.json({ unixEpochStartTime: simulation.getUnixEpochStartTime() });
-            } catch (err: any) {
-                res.status(500).json({ error: err.message });
+            } catch (err: unknown) {
+                res.status(500).json({ error: (err as Error).message });
             }
         });
         
@@ -202,7 +199,7 @@ export class SimulationController {
             if (!this.validateSimulationRunning(res)) return;
             
             try {
-                const simulation = await this.simulationRepo.findById(this.simulationId!);
+                const simulation = await (this.simulationRepo as any).findById(this.simulationId!);
                 if (!simulation) {
                     throw new Error('Simulation not found');
                 }
@@ -212,8 +209,8 @@ export class SimulationController {
                     simulationTime: simulation.getCurrentSimTime(),
                     simulationDay: simulation.currentDay
                 });
-            } catch (err: any) {
-                res.status(500).json({ error: err.message });
+            } catch (err: unknown) {
+                res.status(500).json({ error: (err as Error).message });
             }
         });
 
@@ -259,8 +256,8 @@ export class SimulationController {
             try {
                 const result = await this.getMachinesUseCase.execute();
                 res.json(result);
-            } catch (err: any) {
-                res.status(500).json({ error: err.message });
+            } catch (err: unknown) {
+                res.status(500).json({ error: (err as Error).message });
             }
         });
 
@@ -304,8 +301,8 @@ export class SimulationController {
             try {
                 const result = await this.getTrucksUseCase.execute();
                 res.json(result);
-            } catch (err: any) {
-                res.status(500).json({ error: err.message });
+            } catch (err: unknown) {
+                res.status(500).json({ error: (err as Error).message });
             }
         });
 
@@ -343,8 +340,8 @@ export class SimulationController {
             try {
                 const result = await this.getRawMaterialsUseCase.execute();
                 res.json(result);
-            } catch (err: any) {
-                res.status(500).json({ error: err.message });
+            } catch (err: unknown) {
+                res.status(500).json({ error: (err as Error).message });
             }
         });
 
@@ -398,8 +395,8 @@ export class SimulationController {
             try {
                 const result = await this.getOrdersUseCase.execute();
                 res.json(result);
-            } catch (err: any) {
-                res.status(500).json({ error: err.message });
+            } catch (err: unknown) {
+                res.status(500).json({ error: (err as Error).message });
             }
         });
 
@@ -462,7 +459,7 @@ export class SimulationController {
                 // Get current simulation date
                 let simulationDate: Date | undefined;
                 if (this.simulationId) {
-                    const simulation = await this.simulationRepo.findById(this.simulationId);
+                    const simulation = await (this.simulationRepo as any).findById(this.simulationId);
                     if (simulation) {
                         simulationDate = simulation.getCurrentSimDate();
                     }
@@ -474,8 +471,8 @@ export class SimulationController {
                     simulationDate
                 });
                 res.json(result);
-            } catch (err: any) {
-                res.status(400).json({ error: err.message });
+            } catch (err: unknown) {
+                res.status(400).json({ error: (err as Error).message });
             }
         });
 
@@ -527,7 +524,7 @@ export class SimulationController {
                 
                 let simulationDate: Date | undefined;
                 if (this.simulationId) {
-                    const simulation = await this.simulationRepo.findById(this.simulationId);
+                    const simulation = await (this.simulationRepo as any).findById(this.simulationId);
                     if (simulation) {
                         simulationDate = simulation.getCurrentSimDate();
                     }
@@ -539,8 +536,8 @@ export class SimulationController {
                     simulationDate
                 });
                 res.json(result);
-            } catch (err: any) {
-                res.status(400).json({ error: err.message });
+            } catch (err: unknown) {
+                res.status(400).json({ error: (err as Error).message });
             }
         });
 
@@ -592,7 +589,7 @@ export class SimulationController {
                 // Get current simulation date
                 let simulationDate: Date | undefined;
                 if (this.simulationId) {
-                    const simulation = await this.simulationRepo.findById(this.simulationId);
+                    const simulation = await (this.simulationRepo as any).findById(this.simulationId);
                     if (simulation) {
                         simulationDate = simulation.getCurrentSimDate();
                     }
@@ -604,8 +601,8 @@ export class SimulationController {
                     simulationDate
                 });
                 res.json(result);
-            } catch (err: any) {
-                res.status(400).json({ error: err.message });
+            } catch (err: unknown) {
+                res.status(400).json({ error: (err as Error).message });
             }
         });
 
@@ -673,13 +670,13 @@ export class SimulationController {
                 // If order cannot be fulfilled, return 200 with canFulfill: false
                 // If order can be fulfilled, return 200 with canFulfill: true
                 res.json(result);
-            } catch (err: any) {
-                if (err.message.includes('not found')) {
-                    res.status(404).json({ error: err.message });
-                } else if (err.message.includes('already completed') || err.message.includes('cancelled')) {
-                    res.status(400).json({ error: err.message });
+            } catch (err: unknown) {
+                if ((err as Error).message.includes('not found')) {
+                    res.status(404).json({ error: (err as Error).message });
+                } else if ((err as Error).message.includes('already completed') || (err as Error).message.includes('cancelled')) {
+                    res.status(400).json({ error: (err as Error).message });
                 } else {
-                    res.status(500).json({ error: err.message });
+                    res.status(500).json({ error: (err as Error).message });
                 }
             }
         });
@@ -733,8 +730,8 @@ export class SimulationController {
             try {
                 const result = await this.getCollectionsUseCase.execute();
                 res.json(result);
-            } catch (err: any) {
-                res.status(500).json({ error: err.message });
+            } catch (err: unknown) {
+                res.status(500).json({ error: (err as Error).message });
             }
         });
 
@@ -789,13 +786,13 @@ export class SimulationController {
                 
                 const result = await this.collectItemUseCase.execute({ orderId, collectQuantity });
                 res.json(result);
-            } catch (err: any) {
-                if (err.message.includes('not found')) {
-                    res.status(404).json({ error: err.message });
-                } else if (err.message.includes('already been collected')) {
-                    res.status(400).json({ error: err.message });
+            } catch (err: unknown) {
+                if ((err as Error).message.includes('not found')) {
+                    res.status(404).json({ error: (err as Error).message });
+                } else if ((err as Error).message.includes('already been collected')) {
+                    res.status(400).json({ error: (err as Error).message });
                 } else {
-                    res.status(500).json({ error: err.message });
+                    res.status(500).json({ error: (err as Error).message });
                 }
             }
         });
@@ -829,12 +826,11 @@ export class SimulationController {
                 this.simulationId = undefined;
                 
                 res.json({ message: 'Simulation stopped successfully' });
-            } catch (err: any) {
-                res.status(500).json({ error: err.message });
+            } catch (err: unknown) {
+                res.status(500).json({ error: (err as Error).message });
             }
         });
 
-        //app.use('/simulation', router);
         app.use('/', router);
     }
 }

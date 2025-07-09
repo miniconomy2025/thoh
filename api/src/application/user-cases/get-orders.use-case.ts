@@ -9,12 +9,16 @@ export class GetOrdersUseCase {
         return orders.map(order => ({
             orderId: order.id,
             itemName: order.itemName,
+            itemId: order.itemId,
             quantity: order.quantity,
             unitPrice: order.unitPrice,
             totalPrice: order.totalPrice,
             currency: order.currency,
             orderDate: order.orderDate,
-            status: order.status
+            status: order.status,
+            itemType: order.itemType,
+            item_type_id: order.item_type_id,
+            marketId: order.marketId
         }));
     }
 } 

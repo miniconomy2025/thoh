@@ -10,13 +10,20 @@ export const SimulationMapper = {
     };
   },
 
-  fromDb(data: any) {
+  fromDb(data: Record<string, unknown>) {
+    const unixEpochStartTime =
+      typeof data.unixepochstarttime === 'number' ? data.unixepochstarttime :
+      typeof data.unixEpochStartTime === 'number' ? data.unixEpochStartTime : 0;
     const simulation = new Simulation(
-      data.id, 
-      data.startdate || data.startDate, 
-      data.status, 
-      data.currentDay,
-      data.unixepochstarttime || data.unixEpochStartTime || 0
+      Number(data.id),
+      (typeof data.startdate === 'string' || typeof data.startdate === 'number')
+        ? new Date(data.startdate)
+        : (typeof data.startDate === 'string' || typeof data.startDate === 'number')
+          ? new Date(data.startDate)
+          : undefined,
+      typeof data.status === 'string' ? data.status : undefined,
+      typeof data.currentDay === 'number' ? data.currentDay : 0,
+      unixEpochStartTime
     );
     return simulation;
   }
