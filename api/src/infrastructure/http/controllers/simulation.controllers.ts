@@ -904,6 +904,75 @@ export class SimulationController {
             }
         });
 
+        /**
+         * @openapi
+         * /truck-failure:
+         *   get:
+         *     summary: Generate a random truck failure event
+         *     responses:
+         *       200:
+         *         description: Random truck failure event details
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 truckName:
+         *                   type: string
+         *                   description: Name of the truck that failed
+         *                   example: "large_truck"
+         *                 failureQuantity:
+         *                   type: integer
+         *                   description: Number of trucks that failed
+         *                   example: 3
+         *                 simulationDate:
+         *                   type: string
+         *                   description: Current simulation date
+         *                   example: "2050-01-15"
+         *                 simulationTime:
+         *                   type: string
+         *                   description: Current simulation time
+         *                   example: "14:30:45"
+         *       400:
+         *         description: Simulation not running or no trucks available
+         *       500:
+         *         description: Error generating failure event
+         */
+        router.get('/truck-failure', async (req, res) => {
+            if (!this.validateSimulationRunning(res)) return;
+            
+            try {
+                // Get all available trucks
+                const trucks = await this.getTrucksUseCase.execute();
+                
+                if (!trucks || trucks.length === 0) {
+                    return res.status(400).json({ error: 'No trucks available in the system' });
+                }
+
+                // Randomly select a truck
+                const randomTruck = trucks[Math.floor(Math.random() * trucks.length)];
+                
+                // Generate random failure quantity (between 1 and 5)
+                const failureQuantity = Math.floor(Math.random() * 5) + 1;
+
+                // Get current simulation date and time
+                const simulation = await this.simulationRepo.findById(this.simulationId!);
+                if (!simulation) {
+                    throw new Error('Simulation not found');
+                }
+
+                // Return the failure event
+                res.json({
+                    truckName: randomTruck.truckName,
+                    failureQuantity: failureQuantity,
+                    simulationDate: simulation.getCurrentSimDateString(),
+                    simulationTime: simulation.getCurrentSimTime()
+                });
+            } catch (err: any) {
+                res.status(500).json({ error: err.message });
+            }
+        });
+
         //app.use('/simulation', router);
         app.use('/', router);
     }
