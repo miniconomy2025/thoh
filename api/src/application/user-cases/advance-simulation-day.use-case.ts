@@ -8,9 +8,9 @@ export class AdvanceSimulationDayUseCase {
 
   public async execute(simulationId: number) {
     const simulation = await this.simulationRepo.findById(simulationId);
-    const rawMaterialsMarket = await this.marketRepo.findRawMaterialsMarket();
-    const machinesMarket = await this.marketRepo.findMachinesMarket();
-            const trucksMarket = await this.marketRepo.findTrucksMarket();
+    const rawMaterialsMarket = await this.marketRepo.findLatestRawMaterialsMarket();
+    const machinesMarket = await this.marketRepo.findLatestMachinesMarket();
+    const trucksMarket = await this.marketRepo.findLatestTrucksMarket();
         
         if (!simulation || !rawMaterialsMarket || !machinesMarket || !trucksMarket) {
       throw new Error('Simulation or market not found');

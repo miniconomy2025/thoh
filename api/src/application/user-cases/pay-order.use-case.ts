@@ -1,5 +1,6 @@
 import { IMarketRepository } from '../ports/repository.ports';
 import { ItemTypeRepository } from '../../infrastructure/persistence/postgres/item-type.repository';
+import { Order } from '../../domain/market/order.entity';
 
 export interface PayOrderInput {
     orderId: number;
@@ -54,7 +55,10 @@ export class PayOrderUseCase {
             collected: false,
         };
         
-        await this.marketRepo.saveCollection(collection);
+        await this.marketRepo.saveCollection({
+          id: 0, // or undefined if optional
+          ...collection
+        });
 
         return {
             orderId: updatedOrder.id,
@@ -67,7 +71,7 @@ export class PayOrderUseCase {
         };
     }
 
-    private async checkAndUpdateMarketInventory(order: any): Promise<{ canFulfill: boolean; reason?: string; availableQuantity?: number; itemIds?: number[] }> {
+    private async checkAndUpdateMarketInventory(order: Order): Promise<{ canFulfill: boolean; reason?: string; availableQuantity?: number; itemIds?: number[] }> {
         const itemId = order.itemId;
         const quantity = order.quantity;
 

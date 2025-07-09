@@ -1,6 +1,7 @@
 import { IMarketRepository } from '../../../application/ports/repository.ports';
 import { RawMaterialsMarket, MachinesMarket, TrucksMarket } from '../../../domain/market/market.aggregate';
 import { Order } from '../../../domain/market/order.entity';
+import { Collection } from '../../../domain/market/collection.entity';
 import { pool } from './client';
 import { MarketMapper } from './market.mapper';
 
@@ -277,7 +278,7 @@ export class PgMarketRepository implements IMarketRepository {
     return updateResult.rows[0].id;
   }
 
-  async saveCollection(collection: any): Promise<any> {
+  async saveCollection(collection: Collection): Promise<Collection> {
     const result = await pool.query(`
       INSERT INTO collection ("orderId", "itemName", "itemId", "quantity", "amountCollected", "orderDate", collected)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -291,19 +292,18 @@ export class PgMarketRepository implements IMarketRepository {
       collection.orderDate,
       collection.collected
     ]);
-
-    return result.rows[0];
+    return result.rows[0] as Collection;
   }
 
-  async findCollectionByOrderId(orderId: number): Promise<any | null> {
+  async findCollectionByOrderId(orderId: number): Promise<Collection | null> {
     const result = await pool.query('SELECT * FROM collection WHERE "orderId" = $1', [orderId]);
     if (result.rows.length === 0) return null;
-    return result.rows[0];
+    return result.rows[0] as Collection;
   }
 
-  async getAllCollections(): Promise<any[]> {
+  async getAllCollections(): Promise<Collection[]> {
     const result = await pool.query('SELECT * FROM collection ORDER BY "orderDate" DESC');
-    return result.rows;
+    return result.rows as Collection[];
   }
 
   async markCollectionAsCollected(orderId: number): Promise<void> {
@@ -318,39 +318,31 @@ export class PgMarketRepository implements IMarketRepository {
     }
   }
 
-  async collectFromCollection(orderId: number, collectQuantity: number): Promise<any> {
+  async collectFromCollection(orderId: number, collectQuantity: number): Promise<Collection> {
     const currentCollection = await pool.query(
       'SELECT "amountCollected", quantity, collected FROM collection WHERE "orderId" = $1',
       [orderId]
     );
-    
     if (currentCollection.rows.length === 0) {
       throw new Error(`Collection for order ${orderId} not found`);
     }
-    
     const current = currentCollection.rows[0];
-    
     if (current.collected) {
       throw new Error(`Collection for order ${orderId} has already been fully collected`);
     }
-    
     const currentCollected = Number(current.amountCollected);
     const totalQuantity = Number(current.quantity);
     const newCollected = currentCollected + collectQuantity;
-    
     if (newCollected > totalQuantity) {
       throw new Error(`Cannot collect ${collectQuantity} items. Would exceed total quantity of ${totalQuantity} (already collected: ${currentCollected}).`);
     }
-    
     const shouldMarkCollected = newCollected === totalQuantity;
-    
     if (shouldMarkCollected) {
       await pool.query(
         `UPDATE orders SET status = 'completed' WHERE id = $1`,
         [orderId]
       );
     }
-    
     const result = await pool.query(
       `UPDATE collection 
        SET "amountCollected" = $1, 
@@ -359,11 +351,42 @@ export class PgMarketRepository implements IMarketRepository {
        RETURNING *`,
       [newCollected, shouldMarkCollected, orderId]
     );
-    
     if (result.rows.length === 0) {
       throw new Error(`Failed to update collection for order ${orderId}`);
     }
-    
-    return result.rows[0];
+    return result.rows[0] as Collection;
+  }
+
+  async findLatestMachinesMarket(): Promise<MachinesMarket | null> {
+    const result = await pool.query(`
+      SELECT DISTINCT ON (machine_static_id) ms.id as static_id, ms.name, ms.description, m.id as machine_id, m.machine_static_id, m.cost, m.weight, m."productionRate", m.quantity,
+             mmr.cases, mmr.screens, mmr.electronics, mmr.copper, mmr.silicon, mmr.plastic, mmr.aluminium, mmr.sand
+      FROM machine_market m
+      JOIN machine_static ms ON ms.id = m.machine_static_id
+      LEFT JOIN machine_material_ratio mmr ON mmr.machine_static_id = m.machine_static_id
+      ORDER BY m.machine_static_id, m.id DESC
+    `);
+    if (result.rows.length === 0) return null;
+    return await MarketMapper.fromDbMachines({ machines: result.rows });
+  }
+
+  async findLatestTrucksMarket(): Promise<TrucksMarket | null> {
+    const result = await pool.query(`
+      SELECT DISTINCT ON (vehicle_static_id) *
+      FROM vehicle_market
+      ORDER BY vehicle_static_id, id DESC
+    `);
+    if (result.rows.length === 0) return null;
+    return await MarketMapper.fromDbTrucks({ trucks: result.rows });
+  }
+
+  async findLatestRawMaterialsMarket(): Promise<RawMaterialsMarket | null> {
+    const result = await pool.query(`
+      SELECT DISTINCT ON (material_static_id) *
+      FROM raw_materials_market
+      ORDER BY material_static_id, id DESC
+    `);
+    if (result.rows.length === 0) return null;
+    return MarketMapper.fromDbRawMaterials({ rawMaterials: result.rows });
   }
 }

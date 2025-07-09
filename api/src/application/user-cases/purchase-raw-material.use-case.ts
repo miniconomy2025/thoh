@@ -2,6 +2,7 @@ import { IMarketRepository } from '../ports/repository.ports';
 import { Order } from '../../domain/market/order.entity';
 import { MaterialStaticRepository } from '../../infrastructure/persistence/postgres/material-static.repository';
 import { ItemTypeRepository } from '../../infrastructure/persistence/postgres/item-type.repository';
+import { MaterialStatic } from '../../domain/market/material-static.entity';
 
 export interface PurchaseRawMaterialInput {
     materialName: string;
@@ -24,7 +25,7 @@ export class PurchaseRawMaterialUseCase {
 
         // Look up the static ID for the material name
         const staticMaterials = await this.materialStaticRepo.findAll();
-        const staticMaterial = staticMaterials.find((sm: any) => sm.name === input.materialName);
+        const staticMaterial = staticMaterials.find((sm: MaterialStatic) => sm.name === input.materialName);
         if (!staticMaterial) {
             throw new Error(`Material '${input.materialName}' not found in static table`);
         }
