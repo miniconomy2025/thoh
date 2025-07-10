@@ -17,6 +17,7 @@ import { PhoneStatic } from "../../domain/population/phone-static.entity";
 import { PhoneStaticRepository } from '../../infrastructure/persistence/postgres/phone-static.repository';
 import { PersonRepository } from '../../infrastructure/persistence/postgres/person.repository';
 import { CreateAccountUseCase } from "./create-account.use-case";
+import { NotifySimulationEpochUseCase } from './notify-simulation-epoch.use-case';
 
 function randomMoney(min: number, max: number): Money {
     return { amount: Math.floor(Math.random() * (max - min + 1)) + min, currency: 'ZAR' };
@@ -45,13 +46,17 @@ export class StartSimulationUseCase {
         private readonly materialStaticRepo = new MaterialStaticRepository(),
         private readonly machineStaticRepo = new MachineStaticRepository(),
         private readonly vehicleStaticRepo = new VehicleStaticRepository(),
-        private readonly phoneStaticRepo = new PhoneStaticRepository()
+        private readonly phoneStaticRepo = new PhoneStaticRepository(),
+        private readonly notifySimulationEpochUseCase = new NotifySimulationEpochUseCase()
     ) {}
 
     public async execute(): Promise<{ simulationId: number }> {
         const simulation = new Simulation();
         simulation.start();  // Start first to set unix epoch time
         const simulationId = await this.simulationRepo.save(simulation);  // Then save
+
+        // Notify about the epoch time
+        await this.notifySimulationEpochUseCase.execute(simulation);
 
         // Fetch static tables from the database
         const materialStatics = await this.materialStaticRepo.findAll();

@@ -7,15 +7,6 @@ import {
   type ChartConfig,
 } from "./chart"
 
-export const description = "A simple area chart"
-
-const chartConfig = {
-  desktop: {
-    label: "Desktop",
-    color: "var(--chart-1)",
-  },
-} satisfies ChartConfig
-
 export function ChartArea(
   {
     chartData, 
@@ -24,13 +15,20 @@ export function ChartArea(
   }
     : 
   {
-    chartData: {month: string, value: number}[], 
+    chartData: {measure: string, value: number}[], 
     fillColour?: string, 
     strokeColour?: string
   }) {
+  const chartConfig = {
+    desktop: {
+      label: "Desktop",
+      color: fillColour,
+    },
+} satisfies ChartConfig
+
   return (
     <ChartContainer 
-    className="aspect-auto h-full w-full"
+    className="aspect-auto h-full w-full bg-card"
     config={chartConfig}>
       <AreaChart
         accessibilityLayer
@@ -42,7 +40,7 @@ export function ChartArea(
       >
         <CartesianGrid vertical={false} />
         <XAxis
-          dataKey="month"
+          dataKey="measure"
           tickLine={false}
           axisLine={false}
           tickMargin={8}

@@ -31,6 +31,9 @@ import { Phone } from '../../../domain/population/phone.entity';
 import { AppDataSource } from '../../../domain/population/data-source';
 import { Person } from '../../../domain/population/person.entity';
 import { PhoneStatic } from '../../../domain/population/phone-static.entity';
+import { MutexWrapper } from '../../concurrency';
+import { Month, Chart, KeyValueCache } from '../../../domain/shared/value-objects';
+import { getScaledDate, calculateDaysElapsed } from '../../utils';
 
 export class SimulationController {
     private dailyJobInterval: NodeJS.Timeout | null = null;
@@ -38,6 +41,13 @@ export class SimulationController {
     private advanceSimulationDayUseCase: AdvanceSimulationDayUseCase;
     private currencyRepo: PgCurrencyRepository;
     private getBankInitializationUseCase: GetBankInitializationUseCase;
+
+    private simulationStartDate = new MutexWrapper<Date>(new Date());
+    private totalTrades = new MutexWrapper<number>(0);
+    private activities = new MutexWrapper<{ id: string; time: string; description: string; amount: number }[]>([]);
+    private machinery = new MutexWrapper<KeyValueCache<Month, Chart>>(new KeyValueCache<Month, Chart>());
+    private trucks = new MutexWrapper<KeyValueCache<Month, Chart>>(new KeyValueCache<Month, Chart>());
+    private rawMaterials = new MutexWrapper<KeyValueCache<Month, Chart>>(new KeyValueCache<Month, Chart>());
 
     constructor(
         private readonly startSimulationUseCase: StartSimulationUseCase,
@@ -122,6 +132,7 @@ export class SimulationController {
                     }
                 }
 
+                await this.simulationStartDate.update(async () => new Date());
                 res.status(201).json({ message: `Simulation started successfully and daily job started. Generated simulationId: ${simulation.id}`, simulationId });
             } catch (error: any) {
                 console.error(error);
@@ -569,6 +580,29 @@ export class SimulationController {
                     quantity,
                     simulationDate
                 });
+
+                const simulationStartDate = await this.simulationStartDate.read((date) => date);
+                await this.machinery.update((machinery) => {
+                    const dateOfPurchase = getScaledDate(simulationStartDate, new Date());
+                    const machine = machinery.get(dateOfPurchase.month);
+    
+                    machinery.set(
+                        dateOfPurchase.month,
+                        machine ?
+                        {
+                            ...machine,
+                            purchases: machine.purchases + 1
+                        }
+                        :
+                        {
+                            purchases: 1,
+                            collections: 0,
+                            measure: dateOfPurchase.month
+                        }
+                    )
+                    return machinery
+
+                });
                 res.json(result);
             } catch (err: unknown) {
                 res.status(400).json({ error: (err as Error).message });
@@ -634,6 +668,28 @@ export class SimulationController {
                     quantity,
                     simulationDate
                 });
+
+                const simulationStartDate = await this.simulationStartDate.read((date) => date);
+                await this.trucks.update((trucks) => {
+                    const dateOfPurchase = getScaledDate(simulationStartDate, new Date());
+                    const truck = trucks.get(dateOfPurchase.month);
+
+                    trucks.set(
+                        dateOfPurchase.month,
+                        truck ?
+                        {
+                            ...truck,
+                            purchases: truck.purchases + 1
+                        }
+                        :
+                        {
+                            purchases: 1,
+                            collections: 0,
+                            measure: dateOfPurchase.month
+                        }
+                    )
+                    return trucks
+                })
                 res.json(result);
             } catch (err: unknown) {
                 res.status(400).json({ error: (err as Error).message });
@@ -703,6 +759,29 @@ export class SimulationController {
                     weightQuantity,
                     simulationDate
                 });
+
+                const simulationStartDate = await this.simulationStartDate.read((date) => date);
+                await this.rawMaterials.update((rawMaterials) => {
+                    const dateOfPurchase = getScaledDate(simulationStartDate, new Date());
+                    const rawMaterial = rawMaterials.get(dateOfPurchase.month);
+    
+                    rawMaterials.set(
+                        dateOfPurchase.month,
+                        rawMaterial ?
+                        {
+                            ...rawMaterial,
+                            purchases: rawMaterial.purchases + 1
+                        }
+                        :
+                        {
+                            purchases: 1,
+                            collections: 0,
+                            measure: dateOfPurchase.month
+                        }
+                    )
+                    return rawMaterials
+                })
+
                 res.json(result);
             } catch (err: unknown) {
                 res.status(400).json({ error: (err as Error).message });
@@ -772,6 +851,20 @@ export class SimulationController {
                 
                 // If order cannot be fulfilled, return 200 with canFulfill: false
                 // If order can be fulfilled, return 200 with canFulfill: true
+
+                if(result.canFulfill){
+                    await this.totalTrades.update((trades) => trades + 1);
+                    await this.activities.update((activities) => {
+                        const activity = {
+                            id: `${result.orderId}`,
+                            time: new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" }),
+                            description: `${result.itemName} (${result.quantity} ${result.itemName === 'Raw Material' ? 'kg' : 'units'}) for Đ${result.totalPrice.toFixed(2)}`,
+                            amount: result.totalPrice
+                        };
+                        return [activity, ...activities.slice(0, 9)];
+                    });
+                }
+
                 res.json(result);
             } catch (err: unknown) {
                 if ((err as Error).message.includes('not found')) {
@@ -1012,7 +1105,6 @@ export class SimulationController {
             }
         });
 
-
         /**
          * @openapi
          * /bank/initialization:
@@ -1041,6 +1133,35 @@ export class SimulationController {
                 res.json(result);
             } catch (err: any) {
                 res.status(500).json({ error: err.message });
+            }
+        });
+      
+        /**
+         * @openapi
+         * /simulation-info:
+         *   get:
+         *     summary: get information on the simulation
+         *     responses:
+         *       200:
+         *         description: an object containing simulation information
+         *       500:
+         *         description: Error retrieving said information
+         */
+        router.get('/simulation-info', async (req, res) => {
+            try {
+                if (!this.validateSimulationRunning(res)) return;
+                
+                res.status(200).json({
+                    message: 'Successfully retrieved simulation information',
+                    daysElapsed: calculateDaysElapsed(await this.simulationStartDate.read(async (val) => val) ?? new Date(), new Date()),
+                    totalTrades: await this.totalTrades.read(async (val) => val),
+                    activities: await this.activities.read(async (val) => val),
+                    machinery: (await this.machinery.read(async (val) => val)).getOrderedValues(),
+                    trucks: (await this.trucks.read(async (val) => val)).getOrderedValues(),
+                    rawMaterials: (await this.rawMaterials.read(async (val) => val)).getOrderedValues(),
+                });
+            } catch (err: unknown) {
+                res.status(500).json({ error: (err as Error).message });
             }
         });
 
