@@ -22,6 +22,9 @@ export class Machine {
 
     @Column()
     quantity!: number;
+
+    @Column({ default: false })
+    sold!: boolean;
 }
 
 export class Truck {

@@ -19,4 +19,7 @@ export class Truck {
 
   @Column({ default: false })
   sold!: boolean;
+
+  @Column({ default: 1 })
+  quantity!: number;
 } 

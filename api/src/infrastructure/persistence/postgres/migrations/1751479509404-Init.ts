@@ -171,9 +171,7 @@ export class CreatePersonTable implements MigrationInterface {
             "currency" character varying NOT NULL DEFAULT 'D',
             "phoneWorking" boolean NOT NULL DEFAULT true,
             "phoneId" integer,
-            "populationId" integer NOT NULL,
             CONSTRAINT "FK_person_phone" FOREIGN KEY ("phoneId") REFERENCES "phone"("id") ON DELETE SET NULL,
-            CONSTRAINT "FK_person_population" FOREIGN KEY ("populationId") REFERENCES "population"("id") ON DELETE CASCADE,
             CONSTRAINT "FK_person_currency" FOREIGN KEY ("currency") REFERENCES "currency"("code")
         )`);
     }
