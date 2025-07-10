@@ -16,6 +16,7 @@ import { Phone } from "../../domain/population/phone.entity";
 import { PhoneStatic } from "../../domain/population/phone-static.entity";
 import { PhoneStaticRepository } from '../../infrastructure/persistence/postgres/phone-static.repository';
 import { PersonRepository } from '../../infrastructure/persistence/postgres/person.repository';
+import { CreateAccountUseCase } from "./create-account.use-case";
 
 function randomMoney(min: number, max: number): Money {
     return { amount: Math.floor(Math.random() * (max - min + 1)) + min, currency: 'ZAR' };
@@ -63,6 +64,9 @@ export class StartSimulationUseCase {
 
         const { rawMaterialsMarket, machinesMarket, trucksMarket } = this.createSeededMarkets(materialNameToId, machineNameToId, vehicleNameToId);
         const people = this.createSeededPopulation(1000, { amount: 1000, currency: 'ZAR' }, simulationId, phoneStatics);
+        const accounts = people.map(person => {
+            return this.createAccount(person, simulationId);
+        });
 
         // Save all new phones first
         const phonesToSave = people
@@ -75,6 +79,8 @@ export class StartSimulationUseCase {
         // if (this.bankService && input.initialFunds) {
             // await this.bankService.depositToTreasury(input.initialFunds);
         // }
+
+        const savedAccounts = await Promise.all(accounts);
 
         await Promise.all([
             this.marketRepo.saveRawMaterialsMarket(rawMaterialsMarket),
@@ -189,5 +195,10 @@ export class StartSimulationUseCase {
             people.push(person);
         }
         return people;
+    }
+
+    private async createAccount(person: Person, simulationId: number) {
+        const createAccountUseCase = new CreateAccountUseCase(person);
+        return createAccountUseCase.execute();
     }
 }
