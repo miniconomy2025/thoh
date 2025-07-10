@@ -3,6 +3,7 @@ import express from "express";
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
+import RateLimit from 'express-rate-limit';
 import { StartSimulationUseCase } from "./application/user-cases/start-simulation.use-case";
 import { DistributeSalariesUseCase } from "./application/user-cases/distribute-salary-use-case";
 import { SimulationController } from "./infrastructure/http/controllers/simulation.controllers";

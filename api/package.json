@@ -29,6 +29,7 @@
     "tsconfig-paths": "^4.2.0",
     "typeorm": "^0.3.25",
     "zod": "^4.0.2"
+
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
