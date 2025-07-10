@@ -8,13 +8,16 @@ import { Badge } from "../components/ui/badge"
 import { TrendingUp, Activity, Clock } from "lucide-react"
 import { SidebarTrigger } from "../components/ui/sidebar"
 import { ModeToggle } from "../components/mode-toggle"
-import { ChartArea } from "../components/ui/chart-area"
+import { ChartAreaStacked } from "../components/ui/char-area-stacked"
+import simulationService from "../services/simulation.service"
+import { isApiError } from "../lib/utils"
+import type { Chart } from "../lib/types/shared.types"
 
 interface Entity {
   id: string
   type: string
   name: string
-  accountValue: number
+  accountValue: string
 }
 
 interface ActivityItem {
@@ -25,89 +28,70 @@ interface ActivityItem {
 }
 
 export function EconomicFlowReporting() {
-  const [currentDay, setCurrentDay] = useState(1)
-  const [totalEconomyValue, setTotalEconomyValue] = useState(2450000)
-  const [totalTrades, setTotalTrades] = useState(156)
-  const [machineryChartData, setMachineryChartData] = useState<{ month: string; value: number }[]>([{ month: "January", value: 0 }])
-  const [truckChartData, setTruckChartData] = useState<{ month: string; value: number }[]>([{ month: "January", value: 0 }])
-  const [rawMaterialsData, setRawMaterialsData] = useState<{ month: string; value: number }[]>([{ month: "January", value: 0 }])
+  const [currentDay, setCurrentDay] = useState(0)
+  // const [totalEconomyValue, setTotalEconomyValue] = useState(2450000)
+  const [totalTrades, setTotalTrades] = useState(0)
+  const [machineryChartData, setMachineryChartData] = useState<Chart[]>([])
+  const [truckChartData, setTruckChartData] = useState<Chart[]>([])
+  const [rawMaterialsData, setRawMaterialsData] = useState<Chart[]>([])
   const [activities, setActivities] = useState<ActivityItem[]>([])
 
   const [entities, setEntities] = useState<Entity[]>([
-    { id: "1", type: "Supplier", name: "Global Materials Ltd", accountValue: 450000 },
-    { id: "2", type: "Logistics", name: "FastTrans Corp", accountValue: 125000 },
-    { id: "3", type: "Retail Bank", name: "RetailBank1", accountValue: 890000 },
-    { id: "4", type: "Commercial Bank", name: "CommercialBank Pro", accountValue: 1200000 },
-    { id: "5", type: "Phone Companies", name: "TechPhone Inc", accountValue: 340000 },
-    { id: "6", type: "Recycler", name: "EcoRecycle Solutions", accountValue: 85000 },
+    { id: "1", type: "Supplier", name: "Global Materials Ltd", accountValue: "450000" },
+    { id: "2", type: "Logistics", name: "FastTrans Corp", accountValue: "125000" },
+    { id: "3", type: "Retail Bank", name: "RetailBank1", accountValue: "890000" },
+    { id: "4", type: "Commercial Bank", name: "CommercialBank Pro", accountValue: "1200000" },
+    { id: "5", type: "Phone Companies", name: "TechPhone Inc", accountValue: "340000" },
+    { id: "6", type: "Recycler", name: "EcoRecycle Solutions", accountValue: "85000" },
   ])
 
-
-  function getNextMonth(month: string): string {
-    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
-    const monthIndex = months.indexOf(month)
-    return months[(monthIndex + 1) % 12]
-  }
-
-  function getActivityDescription(): string {
-    const descriptions = [
-      "Automated transaction processed",
-      "Material shipment received by Supplier",
-      "Recycling process initiated for old devices",
-      "Phone manufacturing completed",
-      "Someone sold phone to consumer for R 6,000",
-      "Pear paid R 12,000 to BulkTrans",
-      "RetailBank1 loaned R 10,000 to a person",
-    ]
-
-    return descriptions[Math.floor(Math.random() * descriptions.length)]
+  function getEntityName(type: string): string | undefined {
+    return [
+      "Global Materials Ltd",
+      "FastTrans Corp",
+      "RetailBank1",
+      "CommercialBank Pro",
+      "TechPhone Inc",
+      "EcoRecycle Solutions"
+    ].find((name) => name.toLowerCase().includes(type.toLowerCase()));
   }
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentDay((prev) => prev + 1)
+    let interval: NodeJS.Timeout | undefined = undefined;
+    try{
+      interval = setInterval(async() => {
+        const simulationInfo = await simulationService.simulationInfo();
+        if (!isApiError(simulationInfo)) {
+          setCurrentDay(simulationInfo.daysElapsed);
+          setActivities(simulationInfo.activities);
+          setTotalTrades(simulationInfo.totalTrades);
+          setMachineryChartData(simulationInfo.machinery);
+          setTruckChartData(simulationInfo.trucks);
+          setRawMaterialsData(simulationInfo.rawMaterials);
+        } else{
+          throw new Error(simulationInfo.error);
+        }
 
-      // Simulate new activity
-      const newActivity: ActivityItem = {
-        id: Date.now().toString(),
-        time: new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" }),
-        description: getActivityDescription(),
-        amount: Math.floor(Math.random() * 50000) + 1000,
-      }
-
-      setActivities((prev) => [newActivity, ...prev.slice(0, 9)])
-      setTotalTrades((prev) => prev + 1)
-      setTotalEconomyValue((prev) => {
-        const change = Math.floor(Math.random() * 10000) - 5000
-        return prev + change
-      })
-
-      // always keep at most 12 months of data and remove the oldest one
-      setMachineryChartData((prev) => [...(prev.slice(prev.length > 12 ? 1 : 0)), { 
-          month: getNextMonth(prev[prev.length - 1].month),
-          value: Math.floor(Math.random() * 100000) + 10000 }]) 
-
-      setTruckChartData((prev) => [...(prev.slice(prev.length > 12 ? 1 : 0)), { 
-          month: getNextMonth(prev[prev.length - 1].month),
-          value: Math.floor(Math.random() * 100000) + 10000 }])
-
-      setRawMaterialsData((prev) => [...(prev.slice(prev.length > 12 ? 1 : 0)), { 
-          month: getNextMonth(prev[prev.length - 1].month),
-          value: Math.floor(Math.random() * 100000) + 10000 }])
-
-      setEntities((prev) => prev.map((entity) => ({
-        ...entity,
-        accountValue: entity.accountValue + Math.floor(Math.random() * 10000) - 5000
-      })))
-
-    }, 2000) // Update every 2 seconds
+        //const entityInfo = await simulationService.entityInfo();
+        //if (!isApiError(entityInfo)) {
+        //  setEntities(entityInfo.map((entity) => {
+        //    return {
+        //      id: entity.id.toString(),
+        //      type: entity.name,
+        //      name: entity.name,
+        //      accountValue: entity.balance
+        //    }
+        //  }));
+        //}
+  
+      }, 5000) // Update every 5 seconds as that eqauls 1 hour in the simulation
+    } catch (error) {
+      console.error(error);
+      clearInterval(interval);
+    }
 
     return () => clearInterval(interval)
   }, [])
-
-  const formatCurrency = (amount: number) => {
-    return `R ${amount.toLocaleString()}`
-  }
 
   const getEntityTypeColor = (type: string) => {
     const colors: { [key: string]: string } = {
@@ -119,6 +103,10 @@ export function EconomicFlowReporting() {
       "Recycler": "bg-emerald-100 text-emerald-800",
     }
     return colors[type] || "bg-gray-100 text-gray-800"
+  }
+
+  function formatCurrency(amount: number) {
+    return `Đ ${amount.toLocaleString()}`
   }
 
   return (
@@ -140,7 +128,7 @@ export function EconomicFlowReporting() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalEconomyValue)}</div>
+              <div className="text-2xl font-bold">∞</div>
             </CardContent>
           </Card>
 
@@ -188,8 +176,8 @@ export function EconomicFlowReporting() {
                         <TableCell>
                           <Badge className={getEntityTypeColor(entity.type)}>{entity.type}</Badge>
                         </TableCell>
-                        <TableCell className="font-medium">{entity.name}</TableCell>
-                        <TableCell className="text-right font-mono">{formatCurrency(entity.accountValue)}</TableCell>
+                        <TableCell className="font-medium">{getEntityName(entity.type) ?? "Unknown"}</TableCell>
+                        <TableCell className="text-right font-mono">Đ {entity.accountValue}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -240,7 +228,7 @@ export function EconomicFlowReporting() {
               </CardHeader>
               <CardContent>
                 <div className="h-32 bg-gray-50 rounded flex items-center justify-center">
-                  <ChartArea chartData={machineryChartData} />
+                  <ChartAreaStacked chartData={machineryChartData} />
                 </div>
               </CardContent>
             </Card>
@@ -251,9 +239,12 @@ export function EconomicFlowReporting() {
               </CardHeader>
               <CardContent>
                 <div className="h-32 bg-gray-50 rounded flex items-center justify-center">
-                  <ChartArea chartData={truckChartData} 
-                    strokeColour="green"
-                    fillColour="lightgreen"/>
+                  <ChartAreaStacked chartData={truckChartData} 
+                    fillColourA="lightgreen"
+                    strokeColourA="green"
+                    fillColourB="darkgreen"
+                    strokeColourB="darkgreen"
+                    />
                 </div>
               </CardContent>
             </Card>
@@ -264,9 +255,12 @@ export function EconomicFlowReporting() {
               </CardHeader>
               <CardContent>
                 <div className="h-32 bg-gray-50 rounded flex items-center justify-center">
-                  <ChartArea chartData={rawMaterialsData} 
-                    strokeColour="red"
-                    fillColour="salmon"/>
+                  <ChartAreaStacked chartData={rawMaterialsData} 
+                    fillColourA="salmon"
+                    strokeColourA="red"
+                    fillColourB="salmon"
+                    strokeColourB="maroon"
+                    />
                 </div>
               </CardContent>
             </Card>
