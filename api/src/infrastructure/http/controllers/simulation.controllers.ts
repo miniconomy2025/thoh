@@ -1111,6 +1111,8 @@ export class SimulationController {
          */
         router.post('/simulation-info', async (req, res) => {
             try {
+                if (!this.validateSimulationRunning(res)) return;
+                
                 res.status(200).json({
                     message: 'Successfully retrieved simulation information',
                     daysElapsed: calculateDaysElapsed(await this.simulationStartDate.read(async (val) => val) ?? new Date(), new Date()),

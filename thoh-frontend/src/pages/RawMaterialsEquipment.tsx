@@ -77,7 +77,7 @@ export function RawMaterialsEquipment() {
     getTrucks: false,
     getRawMaterials: false
   });
-  const [errorState, setErrorState] = useState<RawMaterialsEquipmentErrorState>({
+  const [_, setErrorState] = useState<RawMaterialsEquipmentErrorState>({
     getMachines: undefined,
     getTrucks: undefined,
     getRawMaterials: undefined
