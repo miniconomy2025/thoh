@@ -90,6 +90,7 @@ jobs:
               server_name ${{ vars.EC2_HOST }};
               ssl_certificate     ${{ secrets.SERVER_CERT }};;
               ssl_certificate_key ${{ secrets.SERVER_KEY }};
+              ssl_client_certificate ${{ secrets.CA_CERT }};
               ssl_protocols       TLSv1.3;
               ssl_ciphers         HIGH:!aNULL:!MD5;
               ssl_verify_client      on;
