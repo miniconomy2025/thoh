@@ -6,135 +6,127 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Copy files to EC2 with scp
-        uses: appleboy/scp-action@v1
-        with:
-          host: ${{ vars.EC2_HOST }}
-          username: ${{ vars.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          source: "./api/"
-          target: "/home/${{ vars.EC2_USER }}/thoh"
-          rm: false
+      - name: Setup Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
 
-      - name: Run remote commands on EC2 to set up and start Express app
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ vars.EC2_HOST }}
-          username: ${{ vars.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: 22
-          script: |
-            set -e
-            APP_DIR="/home/${{ vars.EC2_USER }}/thoh"
-            SERVICE_NAME="thoh"
-            ENTRY_FILE="dist/main.ts" 
+      - name: Copying stuff over
+        run: |
+          scp -r -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" api ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/thoh
 
-            echo "--- Installing Node.js (v18 LTS) ---"
-            curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -
-            sudo yum install -y nodejs
+          ssh -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "cat > /home/${{ vars.EC2_USER }}/run.sh <<'EOF'
+          #!/bin/bash
+          set -e
+          APP_DIR=\"/home/${{ vars.EC2_USER }}/thoh\"
+          SERVICE_NAME=\"thoh\"
+          ENTRY_FILE=\"dist/main.ts\"
 
-            echo "--- Moving to $APP_DIR and installing dependencies ---"
-            cd $APP_DIR
-            npm install --production
+          echo \"--- Installing Node.js (v18 LTS) ---\"
+          curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -
+          sudo yum install -y nodejs
 
-            echo "--- Writing .env file ---"
-            cat <<EOF > "$APP_DIR/.env"
-            DB_HOST=${{ vars.POSTGRES_HOST }}
-            DB_PORT=${{ vars.POSTGRES_PORT }}
-            DB_NAME=${{ vars.POSTGRES_DB }}
-            DB_USER=${{ vars.POSTGRES_USER }}
-            DB_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-            APPLICATION_NAME=${{ vars.APPLICATION_NAME }}
-            REST_BASE_PATH=${{ vars.REST_BASE_PATH }}
-            API_BASEURL=${{ vars.EC2_HOST }}${{ vars.REST_BASE_PATH }}
-            EOF
+          echo \"--- Moving to \$APP_DIR and installing dependencies ---\"
+          cd \$APP_DIR
+          npm install --production
 
-            chmod 600 "$APP_DIR/.env"
+          echo \"--- Writing .env file ---\"
+          cat <<ENVEOF > \"\$APP_DIR/.env\"
+          DB_HOST=${{ vars.POSTGRES_HOST }}
+          DB_PORT=${{ vars.POSTGRES_PORT }}
+          DB_NAME=${{ vars.POSTGRES_DB }}
+          DB_USER=${{ vars.POSTGRES_USER }}
+          DB_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          APPLICATION_NAME=${{ vars.APPLICATION_NAME }}
+          REST_BASE_PATH=${{ vars.REST_BASE_PATH }}
+          API_BASEURL=${{ vars.EC2_HOST }}${{ vars.REST_BASE_PATH }}
+          ENVEOF
 
-            echo "--- Creating systemd service ---"
-            sudo bash -c "cat > /etc/systemd/system/$SERVICE_NAME.service" <<EOF
-            [Unit]
-            Description=thoh Express App
-            After=network.target
+          chmod 600 \"\$APP_DIR/.env\"
 
-            [Service]
-            EnvironmentFile=$APP_DIR/.env
-            WorkingDirectory=$APP_DIR
-            ExecStart=/usr/bin/node $APP_DIR/$ENTRY_FILE
-            Restart=always
-            User=${{ vars.EC2_USER }}
-            Group=${{ vars.EC2_USER }}
+          echo \"--- Creating systemd service ---\"
+          sudo bash -c \"cat > /etc/systemd/system/\$SERVICE_NAME.service\" <<SERVICEEOF
+          [Unit]
+          Description=thoh Express App
+          After=network.target
 
-            [Install]
-            WantedBy=multi-user.target
-            EOF
+          [Service]
+          EnvironmentFile=\$APP_DIR/.env
+          WorkingDirectory=\$APP_DIR
+          ExecStart=/usr/bin/node \$APP_DIR/\$ENTRY_FILE
+          Restart=always
+          User=${{ vars.EC2_USER }}
+          Group=${{ vars.EC2_USER }}
 
-            echo "--- Reloading systemd and starting service ---"
-            sudo systemctl daemon-reload
-            sudo systemctl enable $SERVICE_NAME
-            sudo systemctl restart $SERVICE_NAME
+          [Install]
+          WantedBy=multi-user.target
+          SERVICEEOF
 
-            echo "--- Installing and configuring NGINX ---"
-            sudo yum install -y nginx
-            sudo systemctl enable nginx
+          echo \"--- Reloading systemd and starting service ---\"
+          sudo systemctl daemon-reload
+          sudo systemctl enable \$SERVICE_NAME
+          sudo systemctl restart \$SERVICE_NAME
 
-            #Define paths
-            CERT_DIR="/etc/nginx/ssl"
-            SERVER_CERT_PATH="$CERT_DIR/server.crt"
-            SERVER_KEY_PATH="$CERT_DIR/server.key"
-            CA_CERT_PATH="$CERT_DIR/ca.crt"
-            NGINX_CONF="/etc/nginx/conf.d/thoh.conf"
-            DOMAIN="thoh-api.projects.bbdgrad.com"
-            
-            # Replace these with actual secret values injected by GitHub Actions
-            SERVER_CERT="${{ secrets.SERVER_CERT }}"
-            SERVER_KEY="${{ secrets.SERVER_KEY }}"
-            CA_CERT="${{ secrets.CA_CERT }}"
-            EC2_HOST="${{ vars.EC2_HOST }}"
-            
-            # Create cert directory with secure permissions
-            sudo mkdir -p "$CERT_DIR"
-            sudo chmod 700 "$CERT_DIR"
-            
-            # Write secrets to files securely
-            echo "$SERVER_CERT" | sudo tee "$SERVER_CERT_PATH" > /dev/null
-            echo "$SERVER_KEY" | sudo tee "$SERVER_KEY_PATH" > /dev/null
-            echo "$CA_CERT"    | sudo tee "$CA_CERT_PATH"    > /dev/null
-            sudo chmod 600 "$SERVER_CERT_PATH" "$SERVER_KEY_PATH" "$CA_CERT_PATH"
-            
-            # Create NGINX config referencing the certificate files
-            sudo bash -c "cat > $NGINX_CONF" <<EOF
-            server {
-            listen 443 ssl;
-            server_name $EC2_HOST;
-            
-            ssl_certificate     $SERVER_CERT_PATH;
-            ssl_certificate_key $SERVER_KEY_PATH;
-            ssl_client_certificate $CA_CERT_PATH;
-            ssl_protocols       TLSv1.3;
-            ssl_ciphers         HIGH:!aNULL:!MD5;
-            ssl_verify_client      on;
+          echo \"--- Installing and configuring NGINX ---\"
+          sudo yum install -y nginx
+          sudo systemctl enable nginx
 
-            location / {
-                proxy_pass http://localhost:3000;
-                proxy_http_version 1.1;
-                proxy_set_header Upgrade \$http_upgrade;
-                proxy_set_header Connection 'upgrade';
-                proxy_set_header Host \$host;
-                proxy_cache_bypass \$http_upgrade;
-                if ($ssl_client_verify != SUCCESS) {
-                    return 403;
-                }
+          CERT_DIR=\"/etc/nginx/ssl\"
+          SERVER_CERT_PATH=\"\$CERT_DIR/server.crt\"
+          SERVER_KEY_PATH=\"\$CERT_DIR/server.key\"
+          CA_CERT_PATH=\"\$CERT_DIR/ca.crt\"
+          NGINX_CONF=\"/etc/nginx/conf.d/thoh.conf\"
+          DOMAIN=\"thoh-api.projects.bbdgrad.com\"
+
+          SERVER_CERT=\"${{ secrets.SERVER_CERT }}\"
+          SERVER_KEY=\"${{ secrets.SERVER_KEY }}\"
+          CA_CERT=\"${{ secrets.CA_CERT }}\"
+          EC2_HOST=\"${{ vars.EC2_HOST }}\"
+
+          sudo mkdir -p \"\$CERT_DIR\"
+          sudo chmod 700 \"\$CERT_DIR\"
+
+          echo \"\$SERVER_CERT\" | sudo tee \"\$SERVER_CERT_PATH\" > /dev/null
+          echo \"\$SERVER_KEY\" | sudo tee \"\$SERVER_KEY_PATH\" > /dev/null
+          echo \"\$CA_CERT\"    | sudo tee \"\$CA_CERT_PATH\"    > /dev/null
+          sudo chmod 600 \"\$SERVER_CERT_PATH\" \"\$SERVER_KEY_PATH\" \"\$CA_CERT_PATH\"
+
+          sudo bash -c \"cat > \$NGINX_CONF\" <<NGINXEOF
+          server {
+              listen 443 ssl;
+              server_name \$EC2_HOST;
+
+              ssl_certificate     \$SERVER_CERT_PATH;
+              ssl_certificate_key \$SERVER_KEY_PATH;
+              ssl_client_certificate \$CA_CERT_PATH;
+              ssl_protocols       TLSv1.3;
+              ssl_ciphers         HIGH:!aNULL:!MD5;
+              ssl_verify_client   on;
+
+              location / {
+                  proxy_pass http://localhost:3000;
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade \$http_upgrade;
+                  proxy_set_header Connection 'upgrade';
+                  proxy_set_header Host \$host;
+                  proxy_cache_bypass \$http_upgrade;
+                  if (\$ssl_client_verify != SUCCESS) {
+                      return 403;
+                  }
               }
-            }
-            EOF
+          }
+          NGINXEOF
 
-            echo "Testing and restarting NGINX..."
-            sudo nginx -t && sudo systemctl restart nginx
+          echo \"Testing and restarting NGINX...\"
+          sudo nginx -t && sudo systemctl restart nginx
 
-            echo "✅ Express app deployed and running behind NGINX."
+          echo \"✅ Express app deployed and running behind NGINX.\"
+          EOF"
+
+      - name: Run run.sh on EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "chmod +x ~/run.sh && ~/run.sh"
