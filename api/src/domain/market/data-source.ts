@@ -16,6 +16,9 @@ export const AppDataSource = new DataSource({
   database: process.env.POSTGRES_DB ,
   synchronize: false,
   logging: true,
-      entities: [Order, Machine, Truck, RawMaterial, Collection, Simulation, MaterialStatic],
+  entities: [Order, Machine, Truck, RawMaterial, Collection, Simulation, MaterialStatic],
   migrations: ["src/infrastructure/persistence/postgres/migrations/*.ts"],
+  ssl: {
+    rejectUnauthorized: false,
+  },
 }); 
