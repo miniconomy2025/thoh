@@ -1,7 +1,7 @@
 import { CONSTANTS } from "../lib/constants";
 import type { People } from "../lib/types/people.types";
 import type { BaseApiError } from "../lib/types/shared.types";
-import type { StartSimulationResponse, StopSimulationResponse } from "../lib/types/simulation.types";
+import type { SimulationInfoResponse, StartSimulationResponse, StopSimulationResponse } from "../lib/types/simulation.types";
 import type { EpochTimeResponse, SimulationTime, SimulationTimeResponse } from "../lib/types/time.types";
 
 export type SimulationService = {
@@ -10,6 +10,7 @@ export type SimulationService = {
   getPeople: () => Promise<People | BaseApiError>,
   getEpochTime: () => Promise<Date | BaseApiError>,
   getCurrentSimulationTime: () => Promise<SimulationTime | BaseApiError>,
+  simulationInfo: () => Promise<SimulationInfoResponse | BaseApiError>
 }
 
 const simulationService: SimulationService = {
@@ -70,6 +71,17 @@ const simulationService: SimulationService = {
     if (response.ok) {
       const data = await response.json();
       return data as StopSimulationResponse;
+    } else {
+      const error = await response.json();
+      return error as BaseApiError;
+    }
+  },
+  simulationInfo: async function (): Promise<SimulationInfoResponse | BaseApiError> {
+    const response = await fetch(`${CONSTANTS.API_URL}/simulation-info`);
+
+    if (response.ok) {
+      const data = await response.json();
+      return data as SimulationInfoResponse;
     } else {
       const error = await response.json();
       return error as BaseApiError;

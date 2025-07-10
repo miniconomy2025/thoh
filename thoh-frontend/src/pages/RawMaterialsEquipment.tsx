@@ -62,7 +62,7 @@ export function RawMaterialsEquipment() {
   }, [inventory, searchTerm, sortBy, filterCategory])
 
   const formatCurrency = (amount: number) => {
-    return `R ${amount.toLocaleString()}`
+    return `Đ ${amount.toLocaleString()}`
   }
 
   const getCategoryColor = (category: string) => {

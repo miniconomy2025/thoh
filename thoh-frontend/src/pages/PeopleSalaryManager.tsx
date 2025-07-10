@@ -113,10 +113,7 @@ export function PeopleSalaryManager() {
   }
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-ZA", {
-      style: "currency",
-      currency: "ZAR",
-    }).format(amount)
+    return `Đ ${amount.toLocaleString()}`
   }
 
   useEffect(() => {

@@ -8,7 +8,10 @@ import { Badge } from "../components/ui/badge"
 import { TrendingUp, Activity, Clock } from "lucide-react"
 import { SidebarTrigger } from "../components/ui/sidebar"
 import { ModeToggle } from "../components/mode-toggle"
-import { ChartArea } from "../components/ui/chart-area"
+import { ChartAreaStacked } from "../components/ui/char-area-stacked"
+import simulationService from "../services/simulation.service"
+import { isApiError } from "../lib/utils"
+import type { Chart } from "../lib/types/shared.types"
 
 interface Entity {
   id: string
@@ -26,11 +29,11 @@ interface ActivityItem {
 
 export function EconomicFlowReporting() {
   const [currentDay, setCurrentDay] = useState(1)
-  const [totalEconomyValue, setTotalEconomyValue] = useState(2450000)
+  // const [totalEconomyValue, setTotalEconomyValue] = useState(2450000)
   const [totalTrades, setTotalTrades] = useState(156)
-  const [machineryChartData, setMachineryChartData] = useState<{ month: string; value: number }[]>([{ month: "January", value: 0 }])
-  const [truckChartData, setTruckChartData] = useState<{ month: string; value: number }[]>([{ month: "January", value: 0 }])
-  const [rawMaterialsData, setRawMaterialsData] = useState<{ month: string; value: number }[]>([{ month: "January", value: 0 }])
+  const [machineryChartData, setMachineryChartData] = useState<Chart[]>([])
+  const [truckChartData, setTruckChartData] = useState<Chart[]>([])
+  const [rawMaterialsData, setRawMaterialsData] = useState<Chart[]>([])
   const [activities, setActivities] = useState<ActivityItem[]>([])
 
   const [entities, setEntities] = useState<Entity[]>([
@@ -42,63 +45,24 @@ export function EconomicFlowReporting() {
     { id: "6", type: "Recycler", name: "EcoRecycle Solutions", accountValue: 85000 },
   ])
 
-
-  function getNextMonth(month: string): string {
-    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
-    const monthIndex = months.indexOf(month)
-    return months[(monthIndex + 1) % 12]
-  }
-
-  function getActivityDescription(): string {
-    const descriptions = [
-      "Automated transaction processed",
-      "Material shipment received by Supplier",
-      "Recycling process initiated for old devices",
-      "Phone manufacturing completed",
-      "Someone sold phone to consumer for R 6,000",
-      "Pear paid R 12,000 to BulkTrans",
-      "RetailBank1 loaned R 10,000 to a person",
-    ]
-
-    return descriptions[Math.floor(Math.random() * descriptions.length)]
-  }
-
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentDay((prev) => prev + 1)
-
-      // Simulate new activity
-      const newActivity: ActivityItem = {
-        id: Date.now().toString(),
-        time: new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" }),
-        description: getActivityDescription(),
-        amount: Math.floor(Math.random() * 50000) + 1000,
+    const interval = setInterval(async() => {
+      const simulationInfo = await simulationService.simulationInfo();
+      if (!isApiError(simulationInfo)) {
+        setCurrentDay(simulationInfo.daysElapsed);
+        setActivities(simulationInfo.activities);
+        setTotalTrades(simulationInfo.totalTrades);
+  
+        // always keep at most 12 months of data and remove the oldest one
+        setMachineryChartData(simulationInfo.machinery);
+        setTruckChartData(simulationInfo.trucks);
+        setRawMaterialsData(simulationInfo.rawMaterials);
+  
+        setEntities((prev) => prev.map((entity) => ({
+          ...entity,
+          accountValue: entity.accountValue + Math.floor(Math.random() * 10000) - 5000
+        })))
       }
-
-      setActivities((prev) => [newActivity, ...prev.slice(0, 9)])
-      setTotalTrades((prev) => prev + 1)
-      setTotalEconomyValue((prev) => {
-        const change = Math.floor(Math.random() * 10000) - 5000
-        return prev + change
-      })
-
-      // always keep at most 12 months of data and remove the oldest one
-      setMachineryChartData((prev) => [...(prev.slice(prev.length > 12 ? 1 : 0)), { 
-          month: getNextMonth(prev[prev.length - 1].month),
-          value: Math.floor(Math.random() * 100000) + 10000 }]) 
-
-      setTruckChartData((prev) => [...(prev.slice(prev.length > 12 ? 1 : 0)), { 
-          month: getNextMonth(prev[prev.length - 1].month),
-          value: Math.floor(Math.random() * 100000) + 10000 }])
-
-      setRawMaterialsData((prev) => [...(prev.slice(prev.length > 12 ? 1 : 0)), { 
-          month: getNextMonth(prev[prev.length - 1].month),
-          value: Math.floor(Math.random() * 100000) + 10000 }])
-
-      setEntities((prev) => prev.map((entity) => ({
-        ...entity,
-        accountValue: entity.accountValue + Math.floor(Math.random() * 10000) - 5000
-      })))
 
     }, 2000) // Update every 2 seconds
 
@@ -106,7 +70,7 @@ export function EconomicFlowReporting() {
   }, [])
 
   const formatCurrency = (amount: number) => {
-    return `R ${amount.toLocaleString()}`
+    return `Đ ${amount.toLocaleString()}`
   }
 
   const getEntityTypeColor = (type: string) => {
@@ -140,7 +104,7 @@ export function EconomicFlowReporting() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalEconomyValue)}</div>
+              <div className="text-2xl font-bold">∞</div>
             </CardContent>
           </Card>
 
@@ -240,7 +204,7 @@ export function EconomicFlowReporting() {
               </CardHeader>
               <CardContent>
                 <div className="h-32 bg-gray-50 rounded flex items-center justify-center">
-                  <ChartArea chartData={machineryChartData} />
+                  <ChartAreaStacked chartData={machineryChartData} />
                 </div>
               </CardContent>
             </Card>
@@ -251,9 +215,12 @@ export function EconomicFlowReporting() {
               </CardHeader>
               <CardContent>
                 <div className="h-32 bg-gray-50 rounded flex items-center justify-center">
-                  <ChartArea chartData={truckChartData} 
-                    strokeColour="green"
-                    fillColour="lightgreen"/>
+                  <ChartAreaStacked chartData={truckChartData} 
+                    fillColourA="lightgreen"
+                    strokeColourA="green"
+                    fillColourB="darkgreen"
+                    strokeColourB="darkgreen"
+                    />
                 </div>
               </CardContent>
             </Card>
@@ -264,9 +231,12 @@ export function EconomicFlowReporting() {
               </CardHeader>
               <CardContent>
                 <div className="h-32 bg-gray-50 rounded flex items-center justify-center">
-                  <ChartArea chartData={rawMaterialsData} 
-                    strokeColour="red"
-                    fillColour="salmon"/>
+                  <ChartAreaStacked chartData={rawMaterialsData} 
+                    fillColourA="salmon"
+                    strokeColourA="red"
+                    fillColourB="salmon"
+                    strokeColourB="maroon"
+                    />
                 </div>
               </CardContent>
             </Card>
