@@ -1,7 +1,9 @@
 import 'dotenv/config';
 import express from "express";
+import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
+import RateLimit from 'express-rate-limit';
 import { StartSimulationUseCase } from "./application/user-cases/start-simulation.use-case";
 import { DistributeSalariesUseCase } from "./application/user-cases/distribute-salary-use-case";
 import { SimulationController } from "./infrastructure/http/controllers/simulation.controllers";
@@ -101,6 +103,7 @@ async function initializeApp() {
     );
 
     const app = express();
+    app.use(cors());
     app.use(express.json());
 
     const swaggerOptions = {
@@ -116,6 +119,10 @@ async function initializeApp() {
     };
     const swaggerSpec = swaggerJsdoc(swaggerOptions);
     app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+    app.get('/swagger.json', (req, res) => {
+        res.setHeader('Content-Type', 'application/json');
+        res.send(swaggerSpec);
+    });
 
     // Setup all routes via registerRoutes
     registerRoutes(app, { simulationController });
