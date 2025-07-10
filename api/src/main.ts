@@ -102,12 +102,7 @@ async function initializeApp() {
     );
 
     const app = express();
-    const limiter =  RateLimit({
-        windowMs: 1 * 60 * 1000,
-        limit: 1000,
-    })
 
-    app.use(limiter);
     app.use(express.json()); // Middleware to parse JSON bodies
 
 
