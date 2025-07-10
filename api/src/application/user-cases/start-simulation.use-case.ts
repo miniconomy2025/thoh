@@ -2,7 +2,7 @@ import { Machine, Truck } from "../../domain/market/equipment.entity";
 import { RawMaterialsMarket, MachinesMarket, TrucksMarket } from "../../domain/market/market.aggregate";
 import { RawMaterial } from "../../domain/market/raw-material.entity";
 import { Person } from "../../domain/population/person.entity";
-import { Population } from "../../domain/population/population.aggregate";
+import { Population } from "../../domain/population/population.entity"; // Use the entity, not the aggregate
 import { Money } from "../../domain/shared/value-objects";
 import { Simulation } from "../../domain/simulation/simulation.aggregate";
 import { IMarketRepository, IPopulationRepository, ISimulationRepository } from "../ports/repository.ports";
@@ -12,6 +12,10 @@ import { getMarketConfig } from "../../domain/shared/config";
 import { MaterialStaticRepository } from '../../infrastructure/persistence/postgres/material-static.repository';
 import { MachineStaticRepository } from '../../infrastructure/persistence/postgres/machine-static.repository';
 import { VehicleStaticRepository } from '../../infrastructure/persistence/postgres/vehicle-static.repository';
+import { Phone } from "../../domain/population/phone.entity";
+import { PhoneStatic } from "../../domain/population/phone-static.entity";
+import { PhoneStaticRepository } from '../../infrastructure/persistence/postgres/phone-static.repository';
+import { PersonRepository } from '../../infrastructure/persistence/postgres/person.repository';
 
 function randomMoney(min: number, max: number): Money {
     return { amount: Math.floor(Math.random() * (max - min + 1)) + min, currency: 'ZAR' };
@@ -39,7 +43,8 @@ export class StartSimulationUseCase {
         private readonly bankService?: any, // Optional, for initial investment
         private readonly materialStaticRepo = new MaterialStaticRepository(),
         private readonly machineStaticRepo = new MachineStaticRepository(),
-        private readonly vehicleStaticRepo = new VehicleStaticRepository()
+        private readonly vehicleStaticRepo = new VehicleStaticRepository(),
+        private readonly phoneStaticRepo = new PhoneStaticRepository()
     ) {}
 
     public async execute(): Promise<{ simulationId: number }> {
@@ -51,12 +56,21 @@ export class StartSimulationUseCase {
         const materialStatics = await this.materialStaticRepo.findAll();
         const machineStatics = await this.machineStaticRepo.findAll();
         const vehicleStatics = await this.vehicleStaticRepo.findAll();
+        const phoneStatics = await this.phoneStaticRepo.findAll();
         const materialNameToId = new Map(materialStatics.map(m => [m.name, m.id]));
         const machineNameToId = new Map(machineStatics.map(m => [m.name, m.id]));
         const vehicleNameToId = new Map(vehicleStatics.map(v => [v.name, v.id]));
 
         const { rawMaterialsMarket, machinesMarket, trucksMarket } = this.createSeededMarkets(materialNameToId, machineNameToId, vehicleNameToId);
-        // const population = this.createSeededPopulation(input.numberOfPeople, input.baseSalary, simulationId);
+        const people = this.createSeededPopulation(1000, { amount: 1000, currency: 'ZAR' }, simulationId, phoneStatics);
+
+        // Save all new phones first
+        const phonesToSave = people
+          .map(p => p.phone)
+          .filter((phone): phone is Phone => !!phone);
+        if (phonesToSave.length > 0) {
+          await PersonRepository.getRepo().manager.getRepository(Phone).save(phonesToSave);
+        }
 
         // if (this.bankService && input.initialFunds) {
             // await this.bankService.depositToTreasury(input.initialFunds);
@@ -66,7 +80,7 @@ export class StartSimulationUseCase {
             this.marketRepo.saveRawMaterialsMarket(rawMaterialsMarket),
             this.marketRepo.saveMachinesMarket(machinesMarket),
             this.marketRepo.saveTrucksMarket(trucksMarket),
-            // this.populationRepo.save(population)
+            PersonRepository.getRepo().save(people)
         ]);
         return { simulationId };
     }
@@ -157,20 +171,23 @@ export class StartSimulationUseCase {
         return trucks;
     }
 
-    private createSeededPopulation(numberOfPeople: number, baseSalary: Money, simulationId: string): Population | null{
+    private createSeededPopulation(numberOfPeople: number, baseSalary: Money, simulationId: number, phoneModels: PhoneStatic[]): Person[] {
         const people: Person[] = [];
-        
         for (let i = 0; i < numberOfPeople; i++) {
-            const personId = `person_${i}`;
-            const bankAccountId = `bank_${personId}`;
             // Vary salary slightly for realism
             const salaryAmount = baseSalary.amount * (1 + (Math.random() - 0.5) * 0.2);
             const salary: Money = { amount: salaryAmount, currency: baseSalary.currency };
-            
-            // people.push(new Person(personId, bankAccountId, salary));?
+            // 30% chance to have a phone
+            let phone = null;
+            if (phoneModels.length > 0 && Math.random() < 0.3) {
+                const model = phoneModels[Math.floor(Math.random() * phoneModels.length)];
+                phone = new Phone();
+                phone.model = model;
+                phone.isBroken = false;
+            }
+            const person = new Person(salary.amount, phone, true); // isAlive true
+            people.push(person);
         }
-        
-        // return new Population(people);?
-        return null
+        return people;
     }
 }

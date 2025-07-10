@@ -1,63 +1,37 @@
 import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
 
-export type OrderStatus = 'pending' | 'completed' | 'cancelled';
-
 @Entity({ name: "orders" })
 export class Order {
     @PrimaryGeneratedColumn()
     id!: number;
 
-    @Column()
+    @Column({ name: 'itemName', type: 'varchar', length: 100 })
     itemName!: string;
 
-    @Column({ nullable: true })
-    itemId!: number;
-
-    @Column("decimal", { precision: 12, scale: 2 })
+    @Column({ type: 'decimal', precision: 12, scale: 2 })
     quantity!: number;
 
-    @Column("decimal", { precision: 12, scale: 2 })
+    @Column({ name: 'unitPrice', type: 'decimal', precision: 12, scale: 2 })
     unitPrice!: number;
 
-    @Column("decimal", { precision: 12, scale: 2 })
+    @Column({ name: 'totalPrice', type: 'decimal', precision: 12, scale: 2 })
     totalPrice!: number;
 
-    @Column()
+    @Column({ type: 'varchar', length: 10, default: 'D' })
     currency!: string;
 
-    @Column("timestamp")
+    @Column({ name: 'orderDate', type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
     orderDate!: Date;
 
-    @Column()
-    status!: OrderStatus;
+    @Column({ type: 'varchar', length: 20, default: 'completed' })
+    status!: string;
 
-    @Column({ nullable: true })
-    itemType?: string;
+    @Column({ type: 'int', nullable: true })
+    itemId?: number;
 
-    @Column({ nullable: true })
+    @Column({ type: 'int', nullable: true })
     item_type_id?: number;
 
-    @Column({ nullable: true })
+    @Column({ type: 'int', nullable: true })
     marketId?: number;
-
-    constructor(
-        itemName: string,
-        quantity: number,
-        unitPrice: number,
-        totalPrice: number,
-        currency: string = 'D',
-        status: OrderStatus = 'completed',
-        itemId?: number,
-        marketId?: number
-    ) {
-        this.itemName = itemName;
-        this.quantity = quantity;
-        this.unitPrice = unitPrice;
-        this.totalPrice = totalPrice;
-        this.currency = currency;
-        this.orderDate = new Date(); // Will be overridden by simulation date if provided
-        this.status = status;
-        this.itemId = itemId || 0;
-        this.marketId = marketId;
-    }
 } 

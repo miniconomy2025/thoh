@@ -1,13 +1,13 @@
 import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
 
-@Entity({ name: "material_static" })
-export class MaterialStatic {
+@Entity({ name: "phone_static" })
+export class PhoneStatic {
     @PrimaryGeneratedColumn()
     id!: number;
 
     @Column({ unique: true })
     name!: string;
 
-    @Column({ type: 'text', nullable: true })
+    @Column({ type: "text", nullable: true })
     description?: string;
 } 

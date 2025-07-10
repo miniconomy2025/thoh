@@ -32,7 +32,7 @@ export class GetRawMaterialsUseCase {
         rawMaterials.forEach(material => {
             if (material.material_static_id === undefined) return;
             const staticData = staticLookup.get(material.material_static_id);
-            if (!staticData) return; // Skip if no static data found
+            if (!staticData) return; 
             
             const materialName = staticData.name || `material_${material.material_static_id}`;
             if (!materialGroups.has(materialName)) {
@@ -45,7 +45,7 @@ export class GetRawMaterialsUseCase {
             const totalQuantity = materialList.reduce((sum, item) => sum + item.material.quantityAvailable, 0);
             
             const totalPricePerKg = materialList.reduce((sum, item) => {
-                const price = item.material.pricePerKg;
+                const price = Number(item.material.pricePerKg);
                 return sum + (price || 0);
             }, 0);
             const averagePricePerKg = Math.round((totalPricePerKg / materialList.length) * 100) / 100; // Round to 2 decimal places

@@ -1,12 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from "typeorm";
+import { PhoneStatic } from "./phone-static.entity";
 
 @Entity({ name: "phone" })
 export class Phone {
     @PrimaryGeneratedColumn()
     id!: number;
 
-    @Column()
-    model!: string;
+    @ManyToOne(() => PhoneStatic, { eager: true })
+    @JoinColumn({ name: "modelId" })
+    model!: PhoneStatic;
 
     @Column({ default: false })
     isBroken!: boolean;
