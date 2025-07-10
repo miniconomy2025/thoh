@@ -27,7 +27,7 @@ jobs:
           ENTRY_FILE=\"dist/main.ts\"
 
           echo \"--- Installing Node.js (v18 LTS) ---\"
-          curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -
+          curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
           sudo yum install -y nodejs
 
           echo \"--- Moving to \$APP_DIR and installing dependencies ---\"
