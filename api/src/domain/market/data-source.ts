@@ -18,7 +18,7 @@ export const AppDataSource = new DataSource({
   logging: true,
   entities: [Order, Machine, Truck, RawMaterial, Collection, Simulation, MaterialStatic],
   migrations: ["src/infrastructure/persistence/postgres/migrations/*.ts"],
-  ssl: {
-    rejectUnauthorized: false,
-  },
+  // ssl: {
+  //   rejectUnauthorized: false,
+  // },
 }); 
