@@ -33,11 +33,8 @@ import { BreakPhonesUseCase } from './application/user-cases/break-phones.use-ca
 async function initializeApp() {
     try {
         await PopulationDataSource.initialize();
-        console.log('Population DataSource has been initialized!');
         await MarketDataSource.initialize();
-        console.log('Market DataSource has been initialized!');
     } catch (err) {
-        console.error('Error during DataSource initialization', err);
         process.exit(1);
     }
 
@@ -103,11 +100,9 @@ async function initializeApp() {
         breakPhonesUseCase
     );
 
-    // Create and configure the Express application
     const app = express();
-    app.use(express.json()); // Middleware to parse JSON bodies
+    app.use(express.json());
 
-    // Swagger setup
     const swaggerOptions = {
         definition: {
             openapi: '3.0.0',
@@ -127,8 +122,6 @@ async function initializeApp() {
 
     const PORT = 3000;
     app.listen(PORT, () => {
-            console.log(`THoH API server is running on http://localhost:${PORT}`);
-    console.log('Persistence: PostgreSQL');
     console.log('API Documentation: http://localhost:3000/api-docs');
     });
 }

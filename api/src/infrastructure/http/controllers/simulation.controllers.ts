@@ -658,6 +658,10 @@ export class SimulationController {
             
             try {
                 const { materialName, weightQuantity } = req.body;
+
+                if(weightQuantity <= 0 || !weightQuantity) {
+                    throw new Error('Weight quantity must be greater than 0');
+                }
                 
                 // Get current simulation date
                 let simulationDate: Date | undefined;

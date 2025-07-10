@@ -25,8 +25,7 @@ export class RawMaterialsMarket {
         if (totalAvailableWeight < weightToSell) {
             throw new Error(`Not enough of material static ID '${materialStaticId}' in stock.`);
         }
-        
-        const totalCost = material.costPerKg * weightToSell;
+        const totalCost = Number(material.costPerKg) * weightToSell;
         const currency = await this.currencyRepo.getDefaultCurrency();
         return { amount: totalCost, currency: currency?.code || 'D', materialId: material.id };
     }
