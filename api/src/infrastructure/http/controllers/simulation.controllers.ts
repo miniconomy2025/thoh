@@ -19,6 +19,8 @@ import { runDailyTasks, SIM_DAY_INTERVAL_MS } from '../../scheduling/daily-tasks
 import { IMarketRepository } from '../../../application/ports/repository.ports';
 import { PgCurrencyRepository } from '../../persistence/postgres/currency.repository';
 import { StopSimulationUseCase } from '../../../application/user-cases/stop-simulation.use-case';
+import axios from 'axios';
+import { GetBankInitializationUseCase } from '../../../application/user-cases/get-bank-initialization.use-case';
 import { RecycleRepository } from '../../persistence/postgres/recycle.repository';
 import { RecyclePhonesUseCase } from '../../../application/user-cases/recycle-phones.use-case';
 import { BreakPhonesUseCase } from '../../../application/user-cases/break-phones.use-case';
@@ -34,6 +36,8 @@ export class SimulationController {
     private dailyJobInterval: NodeJS.Timeout | null = null;
     private simulationId?: number;
     private advanceSimulationDayUseCase: AdvanceSimulationDayUseCase;
+    private currencyRepo: PgCurrencyRepository;
+    private getBankInitializationUseCase: GetBankInitializationUseCase;
 
     constructor(
         private readonly startSimulationUseCase: StartSimulationUseCase,
@@ -57,7 +61,10 @@ export class SimulationController {
         private readonly populationRepo: unknown,
         private readonly breakPhonesUseCase: BreakPhonesUseCase
     ) {
+        //this.advanceSimulationDayUseCase = new AdvanceSimulationDayUseCase(this.simulationRepo, this.marketRepo);
         this.advanceSimulationDayUseCase = new AdvanceSimulationDayUseCase(this.simulationRepo as any, this.marketRepo, this.breakPhonesUseCase);
+        this.currencyRepo = new PgCurrencyRepository();
+        this.getBankInitializationUseCase = new GetBankInitializationUseCase();
     }
 
     private validateSimulationRunning(res: Response): boolean {
@@ -1002,6 +1009,38 @@ export class SimulationController {
                 res.json({ message: 'Simulation stopped successfully' });
             } catch (err: unknown) {
                 res.status(500).json({ error: (err as Error).message });
+            }
+        });
+
+
+        /**
+         * @openapi
+         * /bank/initialization:
+         *   get:
+         *     summary: Get bank initialization data
+         *     responses:
+         *       200:
+         *         description: Bank initialization data
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 primeRate:
+         *                   type: number
+         *                   description: Prime interest rate as a percentage (4-16%)
+         *                   example: 7.25
+         *                 investmentValue:
+         *                   type: integer
+         *                   description: Initial investment value (10B-100B)
+         *                   example: 50000000000
+         */
+        router.get('/bank/initialization', async (req, res) => {
+            try {
+                const result = this.getBankInitializationUseCase.execute();
+                res.json(result);
+            } catch (err: any) {
+                res.status(500).json({ error: err.message });
             }
         });
 

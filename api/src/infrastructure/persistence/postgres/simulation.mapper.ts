@@ -13,7 +13,10 @@ export const SimulationMapper = {
   fromDb(data: Record<string, unknown>) {
     const unixEpochStartTime =
       typeof data.unixepochstarttime === 'number' ? data.unixepochstarttime :
-      typeof data.unixEpochStartTime === 'number' ? data.unixEpochStartTime : 0;
+      typeof data.unixepochstarttime === 'string' ? parseInt(data.unixepochstarttime, 10) :
+      typeof data.unixEpochStartTime === 'number' ? data.unixEpochStartTime :
+      typeof data.unixEpochStartTime === 'string' ? parseInt(data.unixEpochStartTime, 10) : 0;
+
     const simulation = new Simulation(
       Number(data.id),
       (typeof data.startdate === 'string' || typeof data.startdate === 'number')
