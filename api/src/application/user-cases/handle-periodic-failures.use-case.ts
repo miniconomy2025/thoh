@@ -1,4 +1,3 @@
-import axios, { AxiosError } from 'axios';
 import { IMarketRepository } from '../ports/repository.ports';
 import { Simulation } from '../../domain/simulation/simulation.aggregate';
 import { failureNotificationConfig } from '../../infrastructure/config/failure-notification.config';
@@ -22,7 +21,7 @@ export class HandlePeriodicFailuresUseCase {
 
     async execute(simulation: Simulation): Promise<void> {
         // Check if it's time for weekly failures (every 7 days)
-        if (simulation.currentDay % 7 === 0) {
+        if (simulation.currentDay % 1 === 0) {
             await this.handleMachineFailures(simulation);
             await this.handleTruckFailures(simulation);
         }
@@ -45,12 +44,22 @@ export class HandlePeriodicFailuresUseCase {
                     simulationTime: simulation.getCurrentSimTime()
                 };
 
-                await axios.post(bankRateConfig.bankRateUpdateUrl, updateEvent);
+                const response = await fetch(bankRateConfig.bankRateUpdateUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(updateEvent)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to update bank rate: ${response.statusText}`);
+                }
+
                 console.log(`Bank prime rate updated to ${primeRate}%`);
             }
         } catch (error: unknown) {
-            const axiosError = error as AxiosError;
-            console.error('Failed to update bank prime rate:', axiosError.message);
+            console.error('Failed to update bank prime rate:', (error as Error).message);
         }
     }
 
@@ -94,19 +103,28 @@ export class HandlePeriodicFailuresUseCase {
                     };
 
                     // Send to the specific URL
-                    await axios.post(targetUrl, failureEvent);
+                    const response = await fetch(targetUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(failureEvent)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Failed to send machine failure: ${response.statusText}`);
+                    }
+
                     console.log(`Machine failure event sent to ${targetUrl}`);
                 } catch (error: unknown) {
-                    const axiosError = error as AxiosError;
-                    console.error(`Failed to handle machine failure for ${targetUrl}:`, axiosError.message);
+                    console.error(`Failed to handle machine failure for ${targetUrl}:`, (error as Error).message);
                 }
             });
 
             await Promise.all(sendPromises);
             console.log(`Machine failure events processed for ${failureNotificationConfig.machineFailureUrls.length} applications`);
         } catch (error: unknown) {
-            const axiosError = error as AxiosError;
-            console.error('Error handling machine failures:', axiosError.message);
+            console.error('Error handling machine failures:', (error as Error).message);
         }
     }
 
@@ -150,19 +168,28 @@ export class HandlePeriodicFailuresUseCase {
                     };
 
                     // Send to the specific URL
-                    await axios.post(targetUrl, failureEvent);
+                    const response = await fetch(targetUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(failureEvent)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Failed to send truck failure: ${response.statusText}`);
+                    }
+
                     console.log(`Truck failure event sent to ${targetUrl}`);
                 } catch (error: unknown) {
-                    const axiosError = error as AxiosError;
-                    console.error(`Failed to handle truck failure for ${targetUrl}:`, axiosError.message);
+                    console.error(`Failed to handle truck failure for ${targetUrl}:`, (error as Error).message);
                 }
             });
 
             await Promise.all(sendPromises);
             console.log(`Truck failure events processed for ${failureNotificationConfig.truckFailureUrls.length} applications`);
         } catch (error: unknown) {
-            const axiosError = error as AxiosError;
-            console.error('Error handling truck failures:', axiosError.message);
+            console.error('Error handling truck failures:', (error as Error).message);
         }
     }
 } 
