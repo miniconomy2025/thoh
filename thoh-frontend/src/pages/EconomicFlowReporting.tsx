@@ -28,9 +28,9 @@ interface ActivityItem {
 }
 
 export function EconomicFlowReporting() {
-  const [currentDay, setCurrentDay] = useState(1)
+  const [currentDay, setCurrentDay] = useState(0)
   // const [totalEconomyValue, setTotalEconomyValue] = useState(2450000)
-  const [totalTrades, setTotalTrades] = useState(156)
+  const [totalTrades, setTotalTrades] = useState(0)
   const [machineryChartData, setMachineryChartData] = useState<Chart[]>([])
   const [truckChartData, setTruckChartData] = useState<Chart[]>([])
   const [rawMaterialsData, setRawMaterialsData] = useState<Chart[]>([])
@@ -46,25 +46,31 @@ export function EconomicFlowReporting() {
   ])
 
   useEffect(() => {
-    const interval = setInterval(async() => {
-      const simulationInfo = await simulationService.simulationInfo();
-      if (!isApiError(simulationInfo)) {
-        setCurrentDay(simulationInfo.daysElapsed);
-        setActivities(simulationInfo.activities);
-        setTotalTrades(simulationInfo.totalTrades);
+    let interval: NodeJS.Timeout | undefined = undefined;
+    try{
+      interval = setInterval(async() => {
+        const simulationInfo = await simulationService.simulationInfo();
+        if (!isApiError(simulationInfo)) {
+          setCurrentDay(simulationInfo.daysElapsed);
+          setActivities(simulationInfo.activities);
+          setTotalTrades(simulationInfo.totalTrades);
+          setMachineryChartData(simulationInfo.machinery);
+          setTruckChartData(simulationInfo.trucks);
+          setRawMaterialsData(simulationInfo.rawMaterials);
+    
+          setEntities((prev) => prev.map((entity) => ({
+            ...entity,
+            accountValue: entity.accountValue + Math.floor(Math.random() * 10000) - 5000
+          })))
+        } else{
+          throw new Error(simulationInfo.error);
+        }
   
-        // always keep at most 12 months of data and remove the oldest one
-        setMachineryChartData(simulationInfo.machinery);
-        setTruckChartData(simulationInfo.trucks);
-        setRawMaterialsData(simulationInfo.rawMaterials);
-  
-        setEntities((prev) => prev.map((entity) => ({
-          ...entity,
-          accountValue: entity.accountValue + Math.floor(Math.random() * 10000) - 5000
-        })))
-      }
-
-    }, 2000) // Update every 2 seconds
+      }, 2000) // Update every 2 seconds
+    } catch (error) {
+      console.error(error);
+      clearInterval(interval);
+    }
 
     return () => clearInterval(interval)
   }, [])

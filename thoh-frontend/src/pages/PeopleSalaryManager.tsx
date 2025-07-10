@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import type { Person } from "../lib/types/people.types"
 import { isApiError, manageLoading } from "../lib/utils"
 import simulationService from "../services/simulation.service"
+import { Checkbox } from "@radix-ui/react-checkbox"
 
 type PeopleSalaryManagerLoadingState = {
   getPeople: boolean
@@ -122,7 +123,7 @@ export function PeopleSalaryManager() {
                   {!loadingState.getPeople && people.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        No person found. Click "Add Person" to get started.
+                        No person found.
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -130,7 +131,9 @@ export function PeopleSalaryManager() {
                       <TableRow key={index} className={!person.phoneWorking ? "opacity-60" : ""}>
                         <TableCell className="font-medium">{person.id}</TableCell>
                         <TableCell className="text-center">{person.phone?.model.name || "-"}</TableCell>
-                        <TableCell className="text-center">{person.phone && person.phoneWorking ? "Yes" : person.phoneWorking ? "No" : "-"}</TableCell>
+                        <TableCell className="text-center">
+                          <Checkbox checked={person.phone && person.phoneWorking ? true : false} disabled />
+                        </TableCell>
                         <TableCell className="text-center">{formatCurrency(person.salary)}</TableCell>
                       </TableRow>
                     ))
