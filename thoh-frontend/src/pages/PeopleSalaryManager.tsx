@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import type { Person } from "../lib/types/people.types"
 import { isApiError, manageLoading } from "../lib/utils"
 import simulationService from "../services/simulation.service"
-import { Checkbox } from "@radix-ui/react-checkbox"
+import { Checkbox } from "../components/ui/checkbox"
 
 type PeopleSalaryManagerLoadingState = {
   getPeople: boolean
@@ -113,9 +113,9 @@ export function PeopleSalaryManager() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="font-semibold">ID</TableHead>
-                    <TableHead className="font-semibold">Phone Model</TableHead>
-                    <TableHead className="font-semibold">Phone Working</TableHead>
-                    <TableHead className="font-semibold">Salary</TableHead>
+                    <TableHead className="font-semibold text-center">Phone Model</TableHead>
+                    <TableHead className="font-semibold text-center">Phone Working</TableHead>
+                    <TableHead className="font-semibold text-center">Salary</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

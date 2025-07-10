@@ -1147,7 +1147,7 @@ export class SimulationController {
          *       500:
          *         description: Error retrieving said information
          */
-        router.post('/simulation-info', async (req, res) => {
+        router.get('/simulation-info', async (req, res) => {
             try {
                 if (!this.validateSimulationRunning(res)) return;
                 

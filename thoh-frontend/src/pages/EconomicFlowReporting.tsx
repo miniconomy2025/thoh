@@ -72,19 +72,19 @@ export function EconomicFlowReporting() {
           throw new Error(simulationInfo.error);
         }
 
-        const entityInfo = await simulationService.entityInfo();
-        if (!isApiError(entityInfo)) {
-          setEntities(entityInfo.map((entity) => {
-            return {
-              id: entity.id.toString(),
-              type: entity.name,
-              name: entity.name,
-              accountValue: entity.balance
-            }
-          }));
-        }
+        //const entityInfo = await simulationService.entityInfo();
+        //if (!isApiError(entityInfo)) {
+        //  setEntities(entityInfo.map((entity) => {
+        //    return {
+        //      id: entity.id.toString(),
+        //      type: entity.name,
+        //      name: entity.name,
+        //      accountValue: entity.balance
+        //    }
+        //  }));
+        //}
   
-      }, 2000) // Update every 2 seconds
+      }, 5000) // Update every 5 seconds as that eqauls 1 hour in the simulation
     } catch (error) {
       console.error(error);
       clearInterval(interval);
