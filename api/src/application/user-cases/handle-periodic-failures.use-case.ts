@@ -2,25 +2,55 @@ import axios, { AxiosError } from 'axios';
 import { IMarketRepository } from '../ports/repository.ports';
 import { Simulation } from '../../domain/simulation/simulation.aggregate';
 import { failureNotificationConfig } from '../../infrastructure/config/failure-notification.config';
+import { bankRateConfig } from '../../infrastructure/config/bank-rate.config';
 import { MachineStaticRepository } from '../../infrastructure/persistence/postgres/machine-static.repository';
 import { VehicleStaticRepository } from '../../infrastructure/persistence/postgres/vehicle-static.repository';
+import { UpdateBankPrimeRateUseCase } from './update-bank-prime-rate.use-case';
 
 export class HandlePeriodicFailuresUseCase {
     private readonly machineStaticRepo: MachineStaticRepository;
     private readonly vehicleStaticRepo: VehicleStaticRepository;
+    private readonly updateBankPrimeRateUseCase: UpdateBankPrimeRateUseCase;
 
     constructor(
         private readonly marketRepo: IMarketRepository
     ) {
         this.machineStaticRepo = new MachineStaticRepository();
         this.vehicleStaticRepo = new VehicleStaticRepository();
+        this.updateBankPrimeRateUseCase = new UpdateBankPrimeRateUseCase();
     }
 
     async execute(simulation: Simulation): Promise<void> {
         // Check if it's time for weekly failures (every 7 days)
-        if (simulation.currentDay % 1 === 0) {
+        if (simulation.currentDay % 7 === 0) {
             await this.handleMachineFailures(simulation);
             await this.handleTruckFailures(simulation);
+        }
+
+        // Check if it's time for bank rate update (every 30 days)
+        if (simulation.currentDay % 1 === 0) {
+            await this.handleBankRateUpdate(simulation);
+        }
+    }
+
+    private async handleBankRateUpdate(simulation: Simulation): Promise<void> {
+        try {
+            const { primeRate } = this.updateBankPrimeRateUseCase.execute();
+            
+            // Send to bank rate update webhook if configured
+            if (bankRateConfig.bankRateUpdateUrl) {
+                const updateEvent = {
+                    primeRate,
+                    simulationDate: simulation.getCurrentSimDateString(),
+                    simulationTime: simulation.getCurrentSimTime()
+                };
+
+                await axios.post(bankRateConfig.bankRateUpdateUrl, updateEvent);
+                console.log(`Bank prime rate updated to ${primeRate}%`);
+            }
+        } catch (error: unknown) {
+            const axiosError = error as AxiosError;
+            console.error('Failed to update bank prime rate:', axiosError.message);
         }
     }
 
