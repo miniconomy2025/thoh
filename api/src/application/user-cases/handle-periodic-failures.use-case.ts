@@ -2,11 +2,19 @@ import axios, { AxiosError } from 'axios';
 import { IMarketRepository } from '../ports/repository.ports';
 import { Simulation } from '../../domain/simulation/simulation.aggregate';
 import { failureNotificationConfig } from '../../infrastructure/config/failure-notification.config';
+import { MachineStaticRepository } from '../../infrastructure/persistence/postgres/machine-static.repository';
+import { VehicleStaticRepository } from '../../infrastructure/persistence/postgres/vehicle-static.repository';
 
 export class HandlePeriodicFailuresUseCase {
+    private readonly machineStaticRepo: MachineStaticRepository;
+    private readonly vehicleStaticRepo: VehicleStaticRepository;
+
     constructor(
         private readonly marketRepo: IMarketRepository
-    ) {}
+    ) {
+        this.machineStaticRepo = new MachineStaticRepository();
+        this.vehicleStaticRepo = new VehicleStaticRepository();
+    }
 
     async execute(simulation: Simulation): Promise<void> {
         // Check if it's time for weekly failures (every 7 days)
@@ -31,16 +39,25 @@ export class HandlePeriodicFailuresUseCase {
                 return;
             }
 
+            // Get static machine data
+            const staticMachines = await this.machineStaticRepo.findAll();
+            const staticLookup = new Map(staticMachines.map(sm => [sm.id, sm]));
+
             // Generate and send unique failures for each URL
             const sendPromises = failureNotificationConfig.machineFailureUrls.map(async (targetUrl: string) => {
                 try {
                     // Generate unique random failure for each URL
                     const randomMachine = machines[Math.floor(Math.random() * machines.length)];
+                    const staticData = staticLookup.get(randomMachine.machineStaticId);
+                    if (!staticData) {
+                        console.error(`Static data not found for machine ${randomMachine.machineStaticId}`);
+                        return;
+                    }
                     const failureQuantity = Math.floor(Math.random() * 10) + 1;
 
                     // Create failure event data
                     const failureEvent = {
-                        machineName: randomMachine.machineName,
+                        machineName: staticData.name,
                         failureQuantity: failureQuantity,
                         simulationDate: simulation.getCurrentSimDateString(),
                         simulationTime: simulation.getCurrentSimTime()
@@ -78,16 +95,25 @@ export class HandlePeriodicFailuresUseCase {
                 return;
             }
 
+            // Get static truck data
+            const staticTrucks = await this.vehicleStaticRepo.findAll();
+            const staticLookup = new Map(staticTrucks.map(st => [st.id, st]));
+
             // Generate and send unique failures for each URL
             const sendPromises = failureNotificationConfig.truckFailureUrls.map(async (targetUrl: string) => {
                 try {
                     // Generate unique random failure for each URL
                     const randomTruck = trucks[Math.floor(Math.random() * trucks.length)];
+                    const staticData = staticLookup.get(randomTruck.vehicleStaticId);
+                    if (!staticData) {
+                        console.error(`Static data not found for truck ${randomTruck.vehicleStaticId}`);
+                        return;
+                    }
                     const failureQuantity = Math.floor(Math.random() * 5) + 1;
 
                     // Create failure event data
                     const failureEvent = {
-                        truckName: randomTruck.truckName,
+                        truckName: staticData.name,
                         failureQuantity: failureQuantity,
                         simulationDate: simulation.getCurrentSimDateString(),
                         simulationTime: simulation.getCurrentSimTime()
