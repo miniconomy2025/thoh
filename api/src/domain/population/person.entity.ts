@@ -17,14 +17,19 @@ export class Person {
   @Column({ default: true })
   isAlive: boolean;
 
+  @Column({ name: 'accountNumber', nullable: true, unique: true, type: 'varchar' })
+  accountNumber: string | null;
+
   constructor(
     salary: number,
     phone: Phone | null = null,
-    isAlive: boolean = true
+    isAlive: boolean = true,
+    accountNumber: string | null = null
   ) {
     this.salary = salary;
     this.phone = phone;
     this.isAlive = isAlive;
+    this.accountNumber = accountNumber;
   }
 
   // ...other methods...

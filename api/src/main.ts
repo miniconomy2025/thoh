@@ -29,7 +29,9 @@ import { StopSimulationUseCase } from './application/user-cases/stop-simulation.
 import { AppDataSource as PopulationDataSource } from './domain/population/data-source';
 import { AppDataSource as MarketDataSource } from './domain/market/data-source';
 import { BreakPhonesUseCase } from './application/user-cases/break-phones.use-case';
+import dotenv from 'dotenv';
 
+dotenv.config();
 
 async function initializeApp() {
     try {
