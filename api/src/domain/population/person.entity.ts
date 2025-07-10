@@ -1,27 +1,31 @@
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Phone } from './phone.entity';
-import { Column } from 'typeorm';
+import { Population } from './population.entity';
 
+@Entity({ name: 'person' })
 export class Person {
-  id: number;
-  bankAccountId: string;
+  @PrimaryGeneratedColumn()
+  id!: number;
+
   @Column('decimal', { precision: 12, scale: 2 })
   salary: number;
-  phone: Phone | null;
-  phoneWorking: boolean;
 
-    constructor(
-    id: number,
-    bankAccountId: string,
+  @ManyToOne(() => Phone, { nullable: true, eager: true })
+  @JoinColumn({ name: 'phoneId' })
+  phone: Phone | null;
+
+  @Column({ default: true })
+  isAlive: boolean;
+
+  constructor(
     salary: number,
     phone: Phone | null = null,
-    phoneWorking: boolean = true
+    isAlive: boolean = true
   ) {
-    this.id = id;
-    this.bankAccountId = bankAccountId;
     this.salary = salary;
-        this.phone = phone;
-    this.phoneWorking = phoneWorking;
-        }
+    this.phone = phone;
+    this.isAlive = isAlive;
+  }
 
   // ...other methods...
 }

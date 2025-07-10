@@ -1,75 +1,162 @@
 import { IMarketRepository } from '../../../application/ports/repository.ports';
 import { RawMaterialsMarket, MachinesMarket, TrucksMarket } from '../../../domain/market/market.aggregate';
 import { Order } from '../../../domain/market/order.entity';
-import { pool } from './client';
+import { Collection } from '../../../domain/market/collection.entity';
+import { AppDataSource } from '../../../domain/market/data-source';
+import { Machine as MachineEntity } from '../../../domain/market/machine.entity';
+import { Truck as TruckEntity } from '../../../domain/market/vehicle.entity';
+import { RawMaterial as RawMaterialEntity } from '../../../domain/market/raw-material.entity';
+import { MaterialStatic } from '../../../domain/market/material-static.entity';
+// import { pool } from './client';
 import { MarketMapper } from './market.mapper';
 
 export class PgMarketRepository implements IMarketRepository {
+  private machineRepo = AppDataSource.getRepository(MachineEntity);
+  private truckRepo = AppDataSource.getRepository(TruckEntity);
+  private rawMaterialRepo = AppDataSource.getRepository(RawMaterialEntity);
+  private collectionRepo = AppDataSource.getRepository(Collection);
+  private orderRepo = AppDataSource.getRepository(Order);
+  private materialStaticRepo = AppDataSource.getRepository(MaterialStatic);
+
   async findRawMaterialsMarket(): Promise<RawMaterialsMarket | null> {
-    const result = await pool.query('SELECT * FROM raw_material' );
-    if (result.rows.length === 0) return null;
-    return MarketMapper.fromDbRawMaterials({ rawMaterials: result.rows });
+    const materials = await this.rawMaterialRepo.find();
+    if (!materials.length) return null;
+    return MarketMapper.fromDbRawMaterials({ rawMaterials: materials });
   }
 
   async saveRawMaterialsMarket(market: RawMaterialsMarket): Promise<void> {
-    const materials = market.getRawMaterials();
-    for (const m of materials) {
-      await pool.query(`
-        INSERT INTO raw_material (name, "costPerKg", "availableWeight")
-        VALUES ($1, $2, $3)
-      `, [m.name, m.costPerKg, m.availableWeight]);
+    const staticIds = await this.rawMaterialRepo
+      .createQueryBuilder('raw_material')
+      .select('DISTINCT raw_material.material_static_id', 'material_static_id')
+      .getRawMany();
+    const allTypes = market.getRawMaterials().map(m => m.material_static_id);
+    const seen = new Set<number>();
+    // Handle types that already exist
+    for (const { material_static_id } of staticIds) {
+      if (typeof material_static_id !== 'number') continue;
+      seen.add(material_static_id);
+      const latest = await this.rawMaterialRepo.findOne({
+        where: { material_static_id },
+        order: { id: 'DESC' },
+      });
+      if (!latest || typeof latest.material_static_id !== 'number') continue;
+      const m = market.getRawMaterials().find(m => m.material_static_id === material_static_id);
+      if (!m) continue;
+      const entity = new RawMaterialEntity(
+        latest.material_static_id,
+        m.costPerKg,
+        m.availableWeight
+      );
+      await this.rawMaterialRepo.save(entity);
+    }
+    // Handle initial seed for types not yet in the table
+    for (const material_static_id of allTypes) {
+      if (typeof material_static_id !== 'number') continue;
+      if (seen.has(material_static_id)) continue;
+      const m = market.getRawMaterials().find(m => m.material_static_id === material_static_id);
+      if (!m) continue;
+      const entity = new RawMaterialEntity(
+        material_static_id,
+        m.costPerKg,
+        m.availableWeight
+      );
+      await this.rawMaterialRepo.save(entity);
     }
   }
 
   async findMachinesMarket(): Promise<MachinesMarket | null> {
-    const result = await pool.query('SELECT * FROM machine');
-    if (result.rows.length === 0) return null;
-    return await MarketMapper.fromDbMachines({ machines: result.rows });
+    const result = await this.machineRepo.find();
+    if (result.length === 0) return null;
+    return await MarketMapper.fromDbMachines({ machines: result });
   }
 
   async saveMachinesMarket(market: MachinesMarket): Promise<void> {
-       const machines = market.getMachinesForSale();
-    for (const m of machines) {
-      if (!m.cost || typeof m.cost.amount !== 'number' || isNaN(m.cost.amount)) {
-        throw new Error('Cannot save machine with null/invalid cost');
-      }
-      if (!m.weight || typeof m.weight.value !== 'number' || isNaN(m.weight.value)) {
-        throw new Error('Cannot save machine with null/invalid weight');
-      }
-      await pool.query(`
-        INSERT INTO machine (type, cost, weight, "materialRatio", "materialRatioDescription", "productionRate", "quantity")
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        ON CONFLICT (id) DO UPDATE SET
-          type = EXCLUDED.type,
-          cost = EXCLUDED.cost,
-          weight = EXCLUDED.weight,
-          "materialRatio" = EXCLUDED."materialRatio",
-          "materialRatioDescription" = EXCLUDED."materialRatioDescription",
-          "productionRate" = EXCLUDED."productionRate",
-          "quantity" = EXCLUDED."quantity"
-      `, [ m.type, m.cost.amount, m.weight.value, m.materialRatio, m.materialRatioDescription, m.productionRate, m.quantity]);
+    const staticIds = await this.machineRepo
+      .createQueryBuilder('machine')
+      .select('DISTINCT machine.machine_static_id', 'machine_static_id')
+      .getRawMany();
+    const allTypes = market.getMachinesForSale().map(m => m.machineStaticId);
+    const seen = new Set<number>();
+    for (const { machine_static_id } of staticIds) {
+      if (typeof machine_static_id !== 'number') continue;
+      seen.add(machine_static_id);
+      const latest = await this.machineRepo.findOne({
+        where: { machine_static_id },
+        order: { id: 'DESC' },
+      });
+      if (!latest) continue;
+      const m = market.getMachinesForSale().find(m => m.machineStaticId === machine_static_id);
+      if (!m) continue;
+      const entity = new MachineEntity();
+      entity.machine_static_id = latest.machine_static_id;
+      entity.cost = m.cost.amount;
+      entity.weight = m.weight.value;
+      entity.materialRatio = typeof m.materialRatio === 'string' ? m.materialRatio : JSON.stringify(m.materialRatio);
+      entity.productionRate = m.productionRate;
+      entity.quantity = m.quantity;
+      entity.sold = false;
+      await this.machineRepo.save(entity);
+    }
+    // Initial seed for types not yet in the table
+    for (const machine_static_id of allTypes) {
+      if (seen.has(machine_static_id)) continue;
+      const m = market.getMachinesForSale().find(m => m.machineStaticId === machine_static_id);
+      if (!m) continue;
+      const entity = new MachineEntity();
+      entity.machine_static_id = machine_static_id;
+      entity.cost = m.cost.amount;
+      entity.weight = m.weight.value;
+      entity.materialRatio = typeof m.materialRatio === 'string' ? m.materialRatio : JSON.stringify(m.materialRatio);
+      entity.productionRate = m.productionRate;
+      entity.quantity = m.quantity;
+      entity.sold = false;
+      await this.machineRepo.save(entity);
     }
   }
 
   async findTrucksMarket(): Promise<TrucksMarket | null> {
-    const result = await pool.query('SELECT * FROM vehicle');
-    if (result.rows.length === 0) return null;
-    return await MarketMapper.fromDbTrucks({ trucks: result.rows });
+    const result = await this.truckRepo.find();
+    if (result.length === 0) return null;
+    return await MarketMapper.fromDbTrucks({ trucks: result });
   }
 
   async saveTrucksMarket(market: TrucksMarket): Promise<void> {
-    const trucks = market.getTrucksForSale();
-    for (const t of trucks) {
-      await pool.query(`
-        INSERT INTO vehicle ( type, cost, weight, "operatingCostPerDay", quantity)
-        VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT (id) DO UPDATE SET
-          type = EXCLUDED.type,
-          cost = EXCLUDED.cost,
-          weight = EXCLUDED.weight,
-          "operatingCostPerDay" = EXCLUDED."operatingCostPerDay",
-          quantity = EXCLUDED.quantity
-      `, [t.type, t.cost.amount, t.weight.value, t.operatingCostPerDay.amount, t.quantity]);
+    const staticIds = await this.truckRepo
+      .createQueryBuilder('truck')
+      .select('DISTINCT truck.vehicle_static_id', 'vehicle_static_id')
+      .getRawMany();
+    const allTypes = market.getTrucksForSale().map(t => t.vehicleStaticId);
+    const seen = new Set<number>();
+    for (const { vehicle_static_id } of staticIds) {
+      if (typeof vehicle_static_id !== 'number') continue;
+      seen.add(vehicle_static_id);
+      const latest = await this.truckRepo.findOne({
+        where: { vehicle_static_id },
+        order: { id: 'DESC' },
+      });
+      if (!latest) continue;
+      const t = market.getTrucksForSale().find(t => t.vehicleStaticId === vehicle_static_id);
+      if (!t) continue;
+      const entity = new TruckEntity();
+      entity.vehicle_static_id = latest.vehicle_static_id;
+      entity.cost = t.cost.amount;
+      entity.weight = t.weight.value;
+      entity.operatingCostPerDay = t.operatingCostPerDay.amount;
+      entity.sold = false;
+      await this.truckRepo.save(entity);
+    }
+    // Initial seed for types not yet in the table
+    for (const vehicle_static_id of allTypes) {
+      if (seen.has(vehicle_static_id)) continue;
+      const t = market.getTrucksForSale().find(t => t.vehicleStaticId === vehicle_static_id);
+      if (!t) continue;
+      const entity = new TruckEntity();
+      entity.vehicle_static_id = vehicle_static_id;
+      entity.cost = t.cost.amount;
+      entity.weight = t.weight.value;
+      entity.operatingCostPerDay = t.operatingCostPerDay.amount;
+      entity.sold = false;
+      await this.truckRepo.save(entity);
     }
   }
 
@@ -81,271 +168,148 @@ export class PgMarketRepository implements IMarketRepository {
   async saveOrder(order: Order): Promise<Order> {
     let result;
     if (order.id) {
-      // Update existing order
-      result = await pool.query(`
-        UPDATE orders SET
-          "itemName" = $1,
-          "itemId" = $2,
-          quantity = $3,
-          "unitPrice" = $4,
-          "totalPrice" = $5,
-          currency = $6,
-          "orderDate" = $7,
-          status = $8
-        WHERE id = $9
-        RETURNING *
-      `, [
-        order.itemName,
-        order.itemId,
-        order.quantity,
-        order.unitPrice,
-        order.totalPrice,
-        order.currency,
-        order.orderDate,
-        order.status,
-        order.id
-      ]);
+      result = await this.orderRepo.save(order);
     } else {
-      // Insert new order
-      result = await pool.query(`
-        INSERT INTO orders ("itemName", "itemId", quantity, "unitPrice", "totalPrice", currency, "orderDate", status)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-        RETURNING *
-      `, [
-        order.itemName,
-        order.itemId,
-        order.quantity,
-        order.unitPrice,
-        order.totalPrice,
-        order.currency,
-        order.orderDate,
-        order.status
-      ]);
+      result = await this.orderRepo.save(order);
     }
-
-    const savedOrder = result.rows[0];
-    const newOrder = new Order(
-      savedOrder.itemName,
-      Number(savedOrder.quantity),
-      Number(savedOrder.unitPrice),
-      Number(savedOrder.totalPrice),
-      savedOrder.currency,
-      savedOrder.status,
-      savedOrder.itemId
-    );
-    newOrder.id = savedOrder.id;
-    newOrder.orderDate = new Date(savedOrder.orderDate);
-    return newOrder;
+    return result;
   }
 
   async findOrderById(orderId: number): Promise<Order | null> {
-    const result = await pool.query('SELECT * FROM orders WHERE id = $1', [orderId]);
-    if (result.rows.length === 0) return null;
-
-    const orderData = result.rows[0];
-    const order = new Order(
-      orderData.itemName,
-      Number(orderData.quantity),
-      Number(orderData.unitPrice),
-      Number(orderData.totalPrice),
-      orderData.currency,
-      orderData.status,
-      orderData.itemId
-    );
-    order.id = orderData.id;
-    order.orderDate = new Date(orderData.orderDate);
-    return order;
+    return this.orderRepo.findOneBy({ id: orderId });
   }
 
   async getAllOrders(): Promise<Order[]> {
-    const result = await pool.query('SELECT * FROM orders ORDER BY orderDate DESC');
-    return result.rows.map(orderData => {
-      const order = new Order(
-        orderData.itemName,
-        Number(orderData.quantity),
-        Number(orderData.unitPrice),
-        Number(orderData.totalPrice),
-        orderData.currency,
-        orderData.status,
-        orderData.itemId
-      );
-      order.id = orderData.id;
-      order.orderDate = new Date(orderData.orderDate);
-      return order;
-    });
+    return this.orderRepo.find({ order: { orderDate: 'DESC' } });
   }
 
-
-
   // Methods to mark individual items as sold
-  async markTrucksAsSold(truckType: string, quantity: number): Promise<number[]> {
+  async markTrucksAsSold(vehicle_static_id: number, quantity: number): Promise<number[]> {
     // Find available trucks of the specified type that are not sold
-    const result = await pool.query(`
-      SELECT id FROM vehicle 
-      WHERE type = $1 AND sold = false 
-      ORDER BY id 
-      LIMIT $2
-    `, [truckType, quantity]);
+    const result = await this.truckRepo.find({
+      where: { vehicle_static_id, sold: false },
+      order: { id: 'ASC' },
+      take: quantity
+    });
 
-    if (result.rows.length < quantity) {
-      throw new Error(`Not enough ${truckType} trucks available. Requested: ${quantity}, Available: ${result.rows.length}`);
+    if (result.length < quantity) {
+      throw new Error(`Not enough trucks available. Requested: ${quantity}, Available: ${result.length}`);
     }
 
-    const truckIds = result.rows.map(row => row.id);
-    await pool.query(`
-      UPDATE vehicle 
-      SET sold = true 
-      WHERE id = ANY($1)
-    `, [truckIds]);
+    const truckIds = result.map(row => row.id);
+    await this.truckRepo.update(truckIds, { sold: true });
 
     return truckIds;
   }
 
-  async markMachinesAsSold(machineType: string, quantity: number): Promise<number[]> {
-    const result = await pool.query(`
-      SELECT id FROM machine 
-      WHERE type = $1 AND sold = false 
-      ORDER BY id 
-      LIMIT $2
-    `, [machineType, quantity]);
+  async markMachinesAsSold(machine_static_id: number, quantity: number): Promise<number[]> {
+    const result = await this.machineRepo.find({
+      where: { machine_static_id },
+      order: { id: 'ASC' },
+      take: quantity
+    });
 
-    if (result.rows.length < quantity) {
-      throw new Error(`Not enough ${machineType} machines available. Requested: ${quantity}, Available: ${result.rows.length}`);
+    if (result.length < quantity) {
+      throw new Error(`Not enough machines available. Requested: ${quantity}, Available: ${result.length}`);
     }
 
-    const machineIds = result.rows.map(row => row.id);
-    await pool.query(`
-      UPDATE machine 
-      SET sold = true 
-      WHERE id = ANY($1)
-    `, [machineIds]);
+    const machineIds = result.map(row => row.id);
+    await this.machineRepo.update(machineIds, { sold: true });
 
     return machineIds;
   }
 
   async reduceRawMaterialWeight(materialName: string, weightToReduce: number): Promise<number> {
-    const result = await pool.query(`
-      SELECT id, "availableWeight", "costPerKg" FROM raw_material 
-      WHERE name = $1
-    `, [materialName]);
-
-    if (result.rows.length === 0) {
-      throw new Error(`Raw material '${materialName}' not found`);
+    // Look up material_static_id from material_static table
+    const staticResult = await this.materialStaticRepo.findOneBy({ name: materialName });
+    if (!staticResult) {
+      throw new Error(`Material '${materialName}' not found in static table`);
     }
-
-    const material = result.rows[0];
-    
-    if (material.availableWeight < weightToReduce) {
-      throw new Error(`Not enough ${materialName} available. Requested: ${weightToReduce}kg, Available: ${material.availableWeight}kg`);
+    const material_static_id = staticResult.id;
+    const result = await this.rawMaterialRepo.findOneBy({ material_static_id });
+    if (!result) {
+      throw new Error(`Raw material with static id '${material_static_id}' not found in market`);
     }
-
-    const insertResult = await pool.query(`
-      INSERT INTO raw_material (name, "costPerKg", "availableWeight")
-      VALUES ($1, $2, $3)
-      RETURNING id, name, "availableWeight"
-    `, [materialName, material.costPerKg, -weightToReduce]);
-
-    return insertResult.rows[0].id;
+    const available = Number(result.availableWeight);
+    const toReduce = Number(weightToReduce);
+    if (available < toReduce) {
+      throw new Error(`Not enough material available. Requested: ${toReduce}, Available: ${available}`);
+    }
+    await this.rawMaterialRepo.update({ id: result.id }, { availableWeight: available - toReduce });
+    return result.id;
   }
 
-  async saveCollection(collection: any): Promise<any> {
-    const result = await pool.query(`
-      INSERT INTO collection ("orderId", "itemName", "itemId", "quantity", "amountCollected", "orderDate", collected)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING *
-    `, [
-      collection.orderId,
-      collection.itemName,
-      collection.itemId,
-      collection.quantity,
-      collection.amountCollected,
-      collection.orderDate,
-      collection.collected
-    ]);
-
-    return result.rows[0];
+  async saveCollection(collection: Collection): Promise<Collection> {
+    const result = await this.collectionRepo.save(collection);
+    return result;
   }
 
-  async findCollectionByOrderId(orderId: number): Promise<any | null> {
-    const result = await pool.query('SELECT * FROM collection WHERE "orderId" = $1', [orderId]);
-    if (result.rows.length === 0) return null;
-    return result.rows[0];
+  async findCollectionByOrderId(orderId: number): Promise<Collection | null> {
+    const result = await this.collectionRepo.findOneBy({ orderId });
+    if (!result) return null;
+    return result;
   }
 
-  async getAllCollections(): Promise<any[]> {
-    const result = await pool.query('SELECT * FROM collection ORDER BY "orderDate" DESC');
-    return result.rows;
+  async getAllCollections(): Promise<Collection[]> {
+    const result = await this.collectionRepo.find({ order: { orderDate: 'DESC' } });
+    return result;
   }
 
   async markCollectionAsCollected(orderId: number): Promise<void> {
-    const result = await pool.query(`
-      UPDATE collection 
-      SET collected = true, "collectionDate" = NOW()
-      WHERE "orderId" = $1
-    `, [orderId]);
+    const result = await this.collectionRepo.update({ orderId }, { collected: true, collectionDate: new Date() });
 
-    if (result.rowCount === 0) {
+    if (result.affected === 0) {
       throw new Error(`Collection for order ${orderId} not found`);
     }
   }
 
-  async collectFromCollection(orderId: number, collectQuantity: number): Promise<any> {
-    console.log(`[DEBUG] collectFromCollection called with orderId: ${orderId}, collectQuantity: ${collectQuantity}`);
-    
-    // First, get the current state to validate
-    const currentCollection = await pool.query(
-      'SELECT "amountCollected", quantity, collected FROM collection WHERE "orderId" = $1',
-      [orderId]
-    );
-    
-    if (currentCollection.rows.length === 0) {
+  async collectFromCollection(orderId: number, collectQuantity: number): Promise<Collection> {
+    const currentCollection = await this.collectionRepo.findOneBy({ orderId });
+    if (!currentCollection) {
       throw new Error(`Collection for order ${orderId} not found`);
     }
-    
-    const current = currentCollection.rows[0];
-    console.log(`[DEBUG] Current collection state:`, current);
-    
-    if (current.collected) {
+    if (currentCollection.collected) {
       throw new Error(`Collection for order ${orderId} has already been fully collected`);
     }
-    
-    const currentCollected = Number(current.amountCollected);
-    const totalQuantity = Number(current.quantity);
+    const currentCollected = Number(currentCollection.amountCollected);
+    const totalQuantity = Number(currentCollection.quantity);
     const newCollected = currentCollected + collectQuantity;
-    
-    console.log(`[DEBUG] currentCollected: ${currentCollected}, totalQuantity: ${totalQuantity}, newCollected: ${newCollected}`);
-    
     if (newCollected > totalQuantity) {
       throw new Error(`Cannot collect ${collectQuantity} items. Would exceed total quantity of ${totalQuantity} (already collected: ${currentCollected}).`);
     }
-    
-    // Update with explicit calculation
     const shouldMarkCollected = newCollected === totalQuantity;
-    
     if (shouldMarkCollected) {
-      // Mark the order as completed as well
-      await pool.query(
-        `UPDATE orders SET status = 'completed' WHERE id = $1`,
-        [orderId]
-      );
+      await this.orderRepo.update({ id: orderId }, { status: 'completed' });
     }
-    
-    console.log(`[DEBUG] Updating collection with newCollected: ${newCollected}, shouldMarkCollected: ${shouldMarkCollected}`);
-    
-    const result = await pool.query(
-      `UPDATE collection 
-       SET "amountCollected" = $1, 
-           collected = $2
-       WHERE "orderId" = $3 
-       RETURNING *`,
-      [newCollected, shouldMarkCollected, orderId]
-    );
-    
-    if (result.rows.length === 0) {
-      throw new Error(`Failed to update collection for order ${orderId}`);
+    await this.collectionRepo.update({ orderId }, { amountCollected: newCollected, collected: shouldMarkCollected });
+    const updatedCollection = await this.collectionRepo.findOneBy({ orderId });
+    if (!updatedCollection) {
+      throw new Error(`Failed to fetch updated collection for order ${orderId}`);
     }
-    
-    console.log(`[DEBUG] Updated collection result:`, result.rows[0]);
-    return result.rows[0];
+    return updatedCollection;
+  }
+
+  async findLatestMachinesMarket(): Promise<MachinesMarket | null> {
+    const result = await this.machineRepo.find({
+      order: { id: 'DESC' }
+    });
+    if (result.length === 0) return null;
+    return await MarketMapper.fromDbMachines({ machines: result });
+  }
+
+  async findLatestTrucksMarket(): Promise<TrucksMarket | null> {
+    const result = await this.truckRepo.find({
+      order: { id: 'DESC' }
+    });
+    if (result.length === 0) return null;
+    return await MarketMapper.fromDbTrucks({ trucks: result });
+  }
+
+  async findLatestRawMaterialsMarket(): Promise<RawMaterialsMarket | null> {
+    const result = await this.rawMaterialRepo.find({
+      order: { id: 'DESC' }
+    });
+    if (result.length === 0) return null;
+    return MarketMapper.fromDbRawMaterials({ rawMaterials: result });
   }
 }

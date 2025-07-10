@@ -1,17 +1,21 @@
-import { Population } from '../../../domain/population/population.aggregate';
+import { Population as PopulationEntity } from '../../../domain/population/population.entity';
+import { Population as PopulationAggregate } from '../../../domain/population/population.aggregate';
 import { Person } from '../../../domain/population/person.entity';
-import { Phone } from '../../../domain/population/phone.entity';
+
+export function toPopulationAggregate(entity: PopulationEntity): PopulationAggregate {
+    return new PopulationAggregate(entity.id, [], entity.simulationId);
+}
 
 export const PopulationMapper = {
-  toDb(population: Population) {
+  toDb(population: PopulationAggregate) {
     return {
       
     };
   },
 
-  fromDb(data: any) {
+  fromDb(data: Record<string, unknown>) {
     // const people = Array.isArray(data.people)
-    //   ? data.people.map((p: any) => {
+    //   ? data.people.map((p: Record<string, unknown>) => {
     //       const salary = { amount: p.salary.amount, currency: p.salary.currency };
     //       const phone = p.phone ? new Phone(p.phone.model) : null;
     //       if (phone && p.phoneWorking === false) phone.break();

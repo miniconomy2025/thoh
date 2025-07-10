@@ -21,6 +21,16 @@ import { PgCurrencyRepository } from '../../persistence/postgres/currency.reposi
 import { StopSimulationUseCase } from '../../../application/user-cases/stop-simulation.use-case';
 import axios from 'axios';
 import { GetBankInitializationUseCase } from '../../../application/user-cases/get-bank-initialization.use-case';
+import { RecycleRepository } from '../../persistence/postgres/recycle.repository';
+import { RecyclePhonesUseCase } from '../../../application/user-cases/recycle-phones.use-case';
+import { BreakPhonesUseCase } from '../../../application/user-cases/break-phones.use-case';
+import { PersonRepository } from '../../persistence/postgres/person.repository';
+import { PhoneRepository } from '../../persistence/postgres/phone.repository';
+import { PhoneStaticRepository } from '../../persistence/postgres/phone-static.repository';
+import { Phone } from '../../../domain/population/phone.entity';
+import { AppDataSource } from '../../../domain/population/data-source';
+import { Person } from '../../../domain/population/person.entity';
+import { PhoneStatic } from '../../../domain/population/phone-static.entity';
 
 export class SimulationController {
     private dailyJobInterval: NodeJS.Timeout | null = null;
@@ -46,11 +56,13 @@ export class SimulationController {
         private readonly payOrderUseCase: PayOrderUseCase,
         private readonly getCollectionsUseCase: GetCollectionsUseCase,
         private readonly collectItemUseCase: CollectItemUseCase,
-        private readonly simulationRepo: any,
+        private readonly simulationRepo: unknown,
         private readonly marketRepo: IMarketRepository,
-        private readonly populationRepo: any
+        private readonly populationRepo: unknown,
+        private readonly breakPhonesUseCase: BreakPhonesUseCase
     ) {
-        this.advanceSimulationDayUseCase = new AdvanceSimulationDayUseCase(this.simulationRepo, this.marketRepo);
+        //this.advanceSimulationDayUseCase = new AdvanceSimulationDayUseCase(this.simulationRepo, this.marketRepo);
+        this.advanceSimulationDayUseCase = new AdvanceSimulationDayUseCase(this.simulationRepo as any, this.marketRepo, this.breakPhonesUseCase);
         this.currencyRepo = new PgCurrencyRepository();
         this.getBankInitializationUseCase = new GetBankInitializationUseCase();
     }
@@ -85,7 +97,7 @@ export class SimulationController {
             try {
                 const { simulationId } = await this.startSimulationUseCase.execute();
                 this.simulationId = simulationId;
-                const simulation = await this.simulationRepo.findById(simulationId);
+                const simulation = await (this.simulationRepo as any).findById(simulationId);
                 // Start daily job if not already running
                 if (!this.dailyJobInterval) {
                     const rawMaterialsMarket = await this.marketRepo.findRawMaterialsMarket();
@@ -95,14 +107,14 @@ export class SimulationController {
                     if (simulation && rawMaterialsMarket && machinesMarket && trucksMarket) {
                         const advanceDayUseCase = new AdvanceSimulationDayUseCase(
                             simulation,
-                            this.marketRepo
+                            this.marketRepo,
+                            this.breakPhonesUseCase
                         );
                         this.dailyJobInterval = setInterval(async () => {
                             if (this.simulationId) {
                                 try {
                                     await this.advanceSimulationDayUseCase.execute(this.simulationId);
-                                    console.log('Simulation day advanced via scheduled job');
-                                } catch (err) {
+                                } catch (err: unknown) {
                                     console.error('Failed to advance simulation day:', err);
                                 }
                             }
@@ -110,10 +122,10 @@ export class SimulationController {
                     }
                 }
 
-                res.status(201).json({ message: `Simulation started successfully and daily job started. Generated simulationId: ${simulation.id}` });
+                res.status(201).json({ message: `Simulation started successfully and daily job started. Generated simulationId: ${simulation.id}`, simulationId });
             } catch (error: any) {
                 console.error(error);
-                res.status(500).json({ error: 'Failed to start simulation.', details: error.message });
+                res.status(500).json({ error: 'Failed to start simulation.', details: (error as Error).message });
             }
         });
 
@@ -133,9 +145,70 @@ export class SimulationController {
             
             try {
                 const state = await this.getPeopleStateUseCase.execute();
+                console.log('GET /people response:', state);
                 res.json(state);
-            } catch (err: any) {
-                res.status(500).json({ error: err.message });
+            } catch (err: unknown) {
+                res.status(500).json({ error: (err as Error).message });
+            }
+        });
+
+        /**
+         * @openapi
+         * /people/{personId}/phones:
+         *   post:
+         *     summary: Purchase a phone for a person
+         *     parameters:
+         *       - in: path
+         *         name: personId
+         *         required: true
+         *         schema:
+         *           type: integer
+         *     requestBody:
+         *       required: true
+         *       content:
+         *         application/json:
+         *           schema:
+         *             type: object
+         *             properties:
+         *               phoneName:
+         *                 type: string
+         *     responses:
+         *       200:
+         *         description: Phone purchased successfully
+         *       400:
+         *         description: Invalid request
+         *       404:
+         *         description: Person or Phone model not found
+         *       500:
+         *         description: Error
+         */
+        router.post('/people/phones', async (req, res) => {
+            const { phoneName, personId } = req.body;
+            if (!personId || isNaN(personId) || !phoneName || typeof phoneName !== 'string') {
+                return res.status(400).json({ error: 'personId (number, in URL or body) and phoneName (string, in body) are required' });
+            }
+            try {
+                // Find the phone model
+                const phoneModel = await PhoneStaticRepository.getRepo().findOne({ where: { name: phoneName } });
+                if (!phoneModel) {
+                    return res.status(404).json({ error: `Phone model '${phoneName}' not found` });
+                }
+                // Create the phone
+                const phone = new Phone();
+                phone.model = phoneModel;
+                phone.isBroken = false;
+                await PhoneRepository.prototype.save.call({ repo: PhoneRepository.getRepo() }, phone);
+                // Minimal update: set phoneId for the person
+                const updateResult = await PersonRepository.getRepo().update({ id: personId }, { phone: { id: phone.id } });
+                if (updateResult.affected === 0) {
+                    return res.status(404).json({ error: `Person with id ${personId} not found` });
+                }
+                // Extra logging: fetch and log the updated person
+                const updatedPerson = await PersonRepository.getRepo().findOne({ where: { id: personId }, relations: ['phone', 'phone.model'] });
+                console.log('After phone purchase, updated person:', updatedPerson);
+                res.json({ message: `Person ${personId} successfully purchased phone '${phoneName}'`, personId, phoneId: phone.id });
+            } catch (err) {
+                res.status(500).json({ error: (err as Error).message });
             }
         });
 
@@ -164,13 +237,13 @@ export class SimulationController {
             if (!this.validateSimulationRunning(res)) return;
             
             try {
-                const simulation = await this.simulationRepo.findById(this.simulationId!);
+                const simulation = await (this.simulationRepo as any).findById(this.simulationId!);
                 if (!simulation) {
                     throw new Error('Simulation not found');
                 }
                 res.json({ unixEpochStartTime: simulation.getUnixEpochStartTime() });
-            } catch (err: any) {
-                res.status(500).json({ error: err.message });
+            } catch (err: unknown) {
+                res.status(500).json({ error: (err as Error).message });
             }
         });
         
@@ -206,7 +279,7 @@ export class SimulationController {
             if (!this.validateSimulationRunning(res)) return;
             
             try {
-                const simulation = await this.simulationRepo.findById(this.simulationId!);
+                const simulation = await (this.simulationRepo as any).findById(this.simulationId!);
                 if (!simulation) {
                     throw new Error('Simulation not found');
                 }
@@ -216,8 +289,8 @@ export class SimulationController {
                     simulationTime: simulation.getCurrentSimTime(),
                     simulationDay: simulation.currentDay
                 });
-            } catch (err: any) {
-                res.status(500).json({ error: err.message });
+            } catch (err: unknown) {
+                res.status(500).json({ error: (err as Error).message });
             }
         });
 
@@ -263,8 +336,8 @@ export class SimulationController {
             try {
                 const result = await this.getMachinesUseCase.execute();
                 res.json(result);
-            } catch (err: any) {
-                res.status(500).json({ error: err.message });
+            } catch (err: unknown) {
+                res.status(500).json({ error: (err as Error).message });
             }
         });
 
@@ -308,8 +381,8 @@ export class SimulationController {
             try {
                 const result = await this.getTrucksUseCase.execute();
                 res.json(result);
-            } catch (err: any) {
-                res.status(500).json({ error: err.message });
+            } catch (err: unknown) {
+                res.status(500).json({ error: (err as Error).message });
             }
         });
 
@@ -347,8 +420,8 @@ export class SimulationController {
             try {
                 const result = await this.getRawMaterialsUseCase.execute();
                 res.json(result);
-            } catch (err: any) {
-                res.status(500).json({ error: err.message });
+            } catch (err: unknown) {
+                res.status(500).json({ error: (err as Error).message });
             }
         });
 
@@ -402,8 +475,8 @@ export class SimulationController {
             try {
                 const result = await this.getOrdersUseCase.execute();
                 res.json(result);
-            } catch (err: any) {
-                res.status(500).json({ error: err.message });
+            } catch (err: unknown) {
+                res.status(500).json({ error: (err as Error).message });
             }
         });
 
@@ -466,7 +539,7 @@ export class SimulationController {
                 // Get current simulation date
                 let simulationDate: Date | undefined;
                 if (this.simulationId) {
-                    const simulation = await this.simulationRepo.findById(this.simulationId);
+                    const simulation = await (this.simulationRepo as any).findById(this.simulationId);
                     if (simulation) {
                         simulationDate = simulation.getCurrentSimDate();
                     }
@@ -478,8 +551,8 @@ export class SimulationController {
                     simulationDate
                 });
                 res.json(result);
-            } catch (err: any) {
-                res.status(400).json({ error: err.message });
+            } catch (err: unknown) {
+                res.status(400).json({ error: (err as Error).message });
             }
         });
 
@@ -531,7 +604,7 @@ export class SimulationController {
                 
                 let simulationDate: Date | undefined;
                 if (this.simulationId) {
-                    const simulation = await this.simulationRepo.findById(this.simulationId);
+                    const simulation = await (this.simulationRepo as any).findById(this.simulationId);
                     if (simulation) {
                         simulationDate = simulation.getCurrentSimDate();
                     }
@@ -543,8 +616,8 @@ export class SimulationController {
                     simulationDate
                 });
                 res.json(result);
-            } catch (err: any) {
-                res.status(400).json({ error: err.message });
+            } catch (err: unknown) {
+                res.status(400).json({ error: (err as Error).message });
             }
         });
 
@@ -592,11 +665,15 @@ export class SimulationController {
             
             try {
                 const { materialName, weightQuantity } = req.body;
+
+                if(weightQuantity <= 0 || !weightQuantity) {
+                    throw new Error('Weight quantity must be greater than 0');
+                }
                 
                 // Get current simulation date
                 let simulationDate: Date | undefined;
                 if (this.simulationId) {
-                    const simulation = await this.simulationRepo.findById(this.simulationId);
+                    const simulation = await (this.simulationRepo as any).findById(this.simulationId);
                     if (simulation) {
                         simulationDate = simulation.getCurrentSimDate();
                     }
@@ -608,8 +685,8 @@ export class SimulationController {
                     simulationDate
                 });
                 res.json(result);
-            } catch (err: any) {
-                res.status(400).json({ error: err.message });
+            } catch (err: unknown) {
+                res.status(400).json({ error: (err as Error).message });
             }
         });
 
@@ -677,13 +754,13 @@ export class SimulationController {
                 // If order cannot be fulfilled, return 200 with canFulfill: false
                 // If order can be fulfilled, return 200 with canFulfill: true
                 res.json(result);
-            } catch (err: any) {
-                if (err.message.includes('not found')) {
-                    res.status(404).json({ error: err.message });
-                } else if (err.message.includes('already completed') || err.message.includes('cancelled')) {
-                    res.status(400).json({ error: err.message });
+            } catch (err: unknown) {
+                if ((err as Error).message.includes('not found')) {
+                    res.status(404).json({ error: (err as Error).message });
+                } else if ((err as Error).message.includes('already completed') || (err as Error).message.includes('cancelled')) {
+                    res.status(400).json({ error: (err as Error).message });
                 } else {
-                    res.status(500).json({ error: err.message });
+                    res.status(500).json({ error: (err as Error).message });
                 }
             }
         });
@@ -737,8 +814,8 @@ export class SimulationController {
             try {
                 const result = await this.getCollectionsUseCase.execute();
                 res.json(result);
-            } catch (err: any) {
-                res.status(500).json({ error: err.message });
+            } catch (err: unknown) {
+                res.status(500).json({ error: (err as Error).message });
             }
         });
 
@@ -793,14 +870,92 @@ export class SimulationController {
                 
                 const result = await this.collectItemUseCase.execute({ orderId, collectQuantity });
                 res.json(result);
-            } catch (err: any) {
-                if (err.message.includes('not found')) {
-                    res.status(404).json({ error: err.message });
-                } else if (err.message.includes('already been collected')) {
-                    res.status(400).json({ error: err.message });
+            } catch (err: unknown) {
+                if ((err as Error).message.includes('not found')) {
+                    res.status(404).json({ error: (err as Error).message });
+                } else if ((err as Error).message.includes('already been collected')) {
+                    res.status(400).json({ error: (err as Error).message });
                 } else {
-                    res.status(500).json({ error: err.message });
+                    res.status(500).json({ error: (err as Error).message });
                 }
+            }
+        });
+
+        const recyclePhonesUseCase = new RecyclePhonesUseCase();
+        /**
+         * @openapi
+         * /recycled-phones:
+         *   get:
+         *     summary: Get all recycled (broken) phones grouped by model
+         *     responses:
+         *       200:
+         *         description: List of recycled phones grouped by model
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: array
+         *               items:
+         *                 type: object
+         *                 properties:
+         *                   modelId:
+         *                     type: integer
+         *                   modelName:
+         *                     type: string
+         *                   quantity:
+         *                     type: integer
+         */
+        router.get('/recycled-phones', async (req, res) => {
+            try {
+                const grouped = await recyclePhonesUseCase.listGroupedByModel();
+                res.json(grouped);
+            } catch (err) {
+                res.status(500).json({ error: (err as Error).message });
+            }
+        });
+
+        /**
+         * @openapi
+         * /recycled-phones:
+         *   patch:
+         *     summary: Collect recycled phones by model name and quantity
+         *     requestBody:
+         *       required: true
+         *       content:
+         *         application/json:
+         *           schema:
+         *             type: object
+         *             properties:
+         *               modelName:
+         *                 type: string
+         *               quantity:
+         *                 type: integer
+         *     responses:
+         *       200:
+         *         description: Number of phones collected and remaining
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 collected:
+         *                   type: integer
+         *                 remaining:
+         *                   type: integer
+         *       400:
+         *         description: Invalid request
+         *       500:
+         *         description: Error
+         */
+        router.patch('/recycled-phones', async (req, res) => {
+            const { modelName, quantity } = req.body;
+            if (!modelName || typeof modelName !== 'string' || !quantity || typeof quantity !== 'number') {
+                return res.status(400).json({ error: 'modelName (string) and quantity (number) are required' });
+            }
+            try {
+                const result = await recyclePhonesUseCase.collectByModelName(modelName, quantity);
+                res.json(result);
+            } catch (err) {
+                res.status(500).json({ error: (err as Error).message });
             }
         });
 
@@ -833,8 +988,8 @@ export class SimulationController {
                 this.simulationId = undefined;
                 
                 res.json({ message: 'Simulation stopped successfully' });
-            } catch (err: any) {
-                res.status(500).json({ error: err.message });
+            } catch (err: unknown) {
+                res.status(500).json({ error: (err as Error).message });
             }
         });
 

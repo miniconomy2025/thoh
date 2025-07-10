@@ -5,6 +5,8 @@ import { Truck } from "./vehicle.entity";
 import { RawMaterial } from "./raw-material.entity";
 import { Collection } from "./collection.entity";
 import { Simulation } from "../simulation/simulation.entity";
+import { Order } from "./order.entity";
+import { MaterialStatic } from "./material-static.entity";
 export const AppDataSource = new DataSource({
   type: "postgres",
   host: process.env.POSTGRES_HOST ,
@@ -14,6 +16,6 @@ export const AppDataSource = new DataSource({
   database: process.env.POSTGRES_DB ,
   synchronize: false,
   logging: true,
-      entities: [Machine, Truck, RawMaterial, Collection, Simulation],
+      entities: [Order, Machine, Truck, RawMaterial, Collection, Simulation, MaterialStatic],
   migrations: ["src/infrastructure/persistence/postgres/migrations/*.ts"],
 }); 

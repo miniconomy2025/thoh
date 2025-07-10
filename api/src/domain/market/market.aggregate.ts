@@ -1,5 +1,5 @@
 import { Machine, Truck } from "./equipment.entity";
-import { RawMaterialType, MachineType, TruckType } from "./market.types";
+import { RawMaterialType } from "./market.types";
 import { RawMaterial } from "./raw-material.entity";
 import { getMarketConfig } from '../shared/config';
 import { PgCurrencyRepository } from "../../infrastructure/persistence/postgres/currency.repository";
@@ -12,36 +12,35 @@ export class RawMaterialsMarket {
         this.currencyRepo = new PgCurrencyRepository();
     }
 
-    public async checkRawMaterialAvailability(materialName: string, weightToSell: number): Promise<{ amount: number, currency: string, materialId: number }> {
-        const material = this.rawMaterials.find(m => m.name === materialName);
+    public async checkRawMaterialAvailability(materialStaticId: number, weightToSell: number): Promise<{ amount: number, currency: string, materialId: number }> {
+        const material = this.rawMaterials.find(m => m.material_static_id === materialStaticId);
         if (!material) {
-            throw new Error(`Raw material '${materialName}' not found in the market.`);
+            throw new Error(`Raw material with static ID '${materialStaticId}' not found in the market.`);
         }
         
         const totalAvailableWeight = this.rawMaterials
-            .filter(m => m.name === materialName)
+            .filter(m => m.material_static_id === materialStaticId)
             .reduce((sum, m) => sum + m.availableWeight, 0);
             
         if (totalAvailableWeight < weightToSell) {
-            throw new Error(`Not enough ${materialName} in stock.`);
+            throw new Error(`Not enough of material static ID '${materialStaticId}' in stock.`);
         }
-        
-        const totalCost = material.costPerKg * weightToSell;
+        const totalCost = Number(material.costPerKg) * weightToSell;
         const currency = await this.currencyRepo.getDefaultCurrency();
         return { amount: totalCost, currency: currency?.code || 'D', materialId: material.id };
     }
 
-    public async sellRawMaterial(materialName: string, weightToSell: number): Promise<{ amount: number, currency: string, materialId: number }> {
-        const material = this.rawMaterials.find(m => m.name === materialName);
+    public async sellRawMaterial(materialStaticId: number, weightToSell: number): Promise<{ amount: number, currency: string, materialId: number }> {
+        const material = this.rawMaterials.find(m => m.material_static_id === materialStaticId);
         if (!material) {
-            throw new Error(`Raw material '${materialName}' not found in the market.`);
+            throw new Error(`Raw material with static ID '${materialStaticId}' not found in the market.`);
         }
         const totalAvailableWeight = this.rawMaterials
-            .filter(m => m.name === materialName)
+            .filter(m => m.material_static_id === materialStaticId)
             .reduce((sum, m) => sum + m.availableWeight, 0);
             
         if (totalAvailableWeight < weightToSell) {
-            throw new Error(`Not enough ${materialName} in stock.`);
+            throw new Error(`Not enough of material static ID '${materialStaticId}' in stock.`);
         }
         
         material.adjustAvailability(-weightToSell);
@@ -50,28 +49,23 @@ export class RawMaterialsMarket {
         return { amount: totalCost, currency: currency?.code || 'D', materialId: material.id };
     }
 
-    public updateMaterialPrice(materialType: RawMaterialType, newPrice: number): void {
-        // Update all materials of this type
-        const materials = this.rawMaterials.filter(m => m.name === materialType);
+    public updateMaterialPrice(materialStaticId: number, newPrice: number): void {
+        // Update all materials of this static type
+        const materials = this.rawMaterials.filter(m => m.material_static_id === materialStaticId);
         if (materials.length === 0) {
-            throw new Error(`Raw material '${materialType}' not found.`);
+            throw new Error(`Raw material with static ID '${materialStaticId}' not found.`);
         }
         materials.forEach(material => material.updatePrice(newPrice));
     }
 
     public applyDailyRandomness() {
-        const config = getMarketConfig();
         for (const material of this.rawMaterials) {
+            // Randomize price (e.g., ±10%)
             const priceChange = 1 + (Math.random() - 0.5) * 0.2;
-            let newPrice = material.costPerKg * priceChange;
-            if (!Number.isFinite(newPrice) || isNaN(newPrice)) {
-                newPrice = 1;
-            }
-            newPrice = Math.max(1, newPrice);
-            material.updatePrice(newPrice);
-            
-            const incrementalQuantity = Math.max(1, Math.floor( material.availableWeight * 0.02 * (0.8 + Math.random() * 0.4))); // 1.6% to 2.4%
-            material.adjustAvailability(incrementalQuantity);
+            material.costPerKg = Math.max(1, Math.round(material.costPerKg * priceChange * 100) / 100);
+            // Optionally randomize availableWeight (e.g., simulate supply changes)
+            // const weightChange = 1 + (Math.random() - 0.5) * 0.1;
+            // material.availableWeight = Math.max(0, Math.round(material.availableWeight * weightChange));
         }
     }
 
@@ -107,7 +101,6 @@ export class MachinesMarket {
             if (!Number.isFinite(machine.cost.amount) || isNaN(machine.cost.amount)) {
                 throw new Error('Invalid machine cost after randomness');
             }
-            console.debug('[DEBUG] Machine after randomness:', machine);
         }
     }
 

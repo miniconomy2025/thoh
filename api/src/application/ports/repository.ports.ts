@@ -1,7 +1,8 @@
 import { RawMaterialsMarket, MachinesMarket, TrucksMarket } from "../../domain/market/market.aggregate";
-import { Population } from "../../domain/population/population.aggregate";
+import { Population as PopulationEntity } from '../../domain/population/population.entity';
 import { Simulation } from "../../domain/simulation/simulation.aggregate";
 import { Order } from "../../domain/market/order.entity";
+import { Collection } from '../../domain/market/collection.entity';
 
 export interface ISimulationRepository {
     findById(simulationId: number): Promise<Simulation | null>;
@@ -23,19 +24,23 @@ export interface IMarketRepository {
     getAllOrders(): Promise<Order[]>;
     
     // Collection repository methods
-    saveCollection(collection: any): Promise<any>;
-    findCollectionByOrderId(orderId: number): Promise<any | null>;
-    getAllCollections(): Promise<any[]>;
+    saveCollection(collection: Collection): Promise<Collection>;
+    findCollectionByOrderId(orderId: number): Promise<Collection | null>;
+    getAllCollections(): Promise<Collection[]>;
     markCollectionAsCollected(orderId: number): Promise<void>;
-    collectFromCollection(orderId: number, collectQuantity: number): Promise<any>;
+    collectFromCollection(orderId: number, collectQuantity: number): Promise<Collection>;
     
     // Inventory update methods
-    markTrucksAsSold(truckType: string, quantity: number): Promise<number[]>;
-    markMachinesAsSold(machineType: string, quantity: number): Promise<number[]>;
+    markTrucksAsSold(vehicleStaticId: number, quantity: number): Promise<number[]>;
+    markMachinesAsSold(machineStaticId: number, quantity: number): Promise<number[]>;
     reduceRawMaterialWeight(materialName: string, weightToReduce: number): Promise<number>;
+    findLatestRawMaterialsMarket(): Promise<RawMaterialsMarket | null>;
+    findLatestMachinesMarket(): Promise<MachinesMarket | null>;
+    findLatestTrucksMarket(): Promise<TrucksMarket | null>;
 }
 
 export interface IPopulationRepository {
-    find(): Promise<Population | null>;
-    save(population: Population): Promise<void>;
+    find(): Promise<PopulationEntity | null>;
+    save(population: PopulationEntity): Promise<void>;
+    updatePerson(person: import('../../domain/population/person.entity').Person): Promise<void>;
 }

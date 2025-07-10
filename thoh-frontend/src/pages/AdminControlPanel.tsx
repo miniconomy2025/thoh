@@ -1,29 +1,115 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
+import { ModeToggle } from "../components/mode-toggle"
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
 import {
   SidebarTrigger,
 } from "../components/ui/sidebar"
-import { ModeToggle } from "../components/mode-toggle"
+import { CONSTANTS } from "../lib/constants"
+import { useInterval } from "../lib/hooks"
+import type { StartSimulationResponse } from "../lib/types/simulation.types"
+import { isApiError, manageLoading } from "../lib/utils"
+import simulationService from "../services/simulation.service"
+
+type AdminControlPanelLoadingState = {
+  startSimulation: boolean;
+  stopSimulation: boolean;
+  systemStatus: boolean;
+}
+
+type AdminControlPanelErrorState = {
+  startSimulation: string | undefined;
+  stopSimulation: string | undefined;
+  systemStatus: string | undefined;
+  syncedSimulationTime: string | undefined;
+}
+
 
 export function AdminControlPanel() {
   const [isRunning, setIsRunning] = useState(false)
+  const [simulation, setSimulation] = useState<StartSimulationResponse | null>(null)
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [loadingState, setLoadingState] = useState<AdminControlPanelLoadingState>({
+    startSimulation: false,
+    stopSimulation: false,
+    systemStatus: false,
+  })
+  const [errorState, setErrorState] = useState<AdminControlPanelErrorState>({
+    startSimulation: undefined,
+    stopSimulation: undefined,
+    systemStatus: undefined,
+    syncedSimulationTime: undefined
+  })
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentDate(new Date())
-    }, 1000)
+  useInterval(() => {
+    setCurrentDate(() => new Date(currentDate.getTime() + 1000))
+  }, 1000)
 
-    return () => clearInterval(interval)
-  }, [])
+  useInterval(() => {
+    if (!isRunning || !simulation) {
+      // do nothing
+    } else {
+      handleSyncedSimulationTime(simulation);
+    }
+  }, CONSTANTS.SIMULATION_SYNC_INTERVAL);
 
   const handleStartSimulation = () => {
-    setIsRunning(true)
+    manageLoading<AdminControlPanelLoadingState>(
+      ['startSimulation', 'systemStatus'], 
+      setLoadingState,
+      async () => {
+        try {
+          const simulationResponse = await simulationService.startSimulation()
+          if (isApiError(simulationResponse)) {
+            setIsRunning(false);
+            setSimulation(null);
+          } else {
+            setIsRunning(true);
+            setSimulation(simulationResponse);
+            handleSyncedSimulationTime(simulationResponse);
+          }
+        } catch(error) {
+          setIsRunning(false);
+          setErrorState((prev) => ({ ...prev, startSimulation: (error as Error).message }));
+        };
+      }
+    );
   }
 
   const handleResetSimulation = () => {
-    setIsRunning(false)
+    manageLoading<AdminControlPanelLoadingState>(
+      ['stopSimulation', 'systemStatus'], 
+      setLoadingState,
+      async () => {
+        try {
+          const stopSimulationResponse = await simulationService.stopSimulation();
+          if (isApiError(stopSimulationResponse)) {
+            setErrorState((prev) => ({ ...prev, stopSimulation: stopSimulationResponse.error }));
+          } else {
+            setIsRunning(false)
+            setSimulation(null)
+          }
+        } catch (error) {
+          setErrorState((prev) => ({ ...prev, stopSimulation: (error as Error).message }));
+        }
+      }
+    );
+  }
+
+  const handleSyncedSimulationTime = (simulation: StartSimulationResponse) => {
+    if (simulation) {
+      simulationService.getCurrentSimulationTime().then((simulationTime) => {
+        if (isApiError(simulationTime)) {
+          setCurrentDate(() => currentDate);
+        } else {
+          setCurrentDate(simulationTime.simulationDateTime);
+        }
+      }).catch((error) => {
+        setErrorState((prev) => ({ ...prev, syncedSimulationTime: (error as Error).message }));
+      });
+    } else {
+      setCurrentDate(() => currentDate);
+    }
   }
 
   const formatDate = (date: Date) => {
@@ -50,11 +136,11 @@ export function AdminControlPanel() {
               <CardContent className="space-y-6">
               {/* Control Buttons */}
               <div className="flex justify-center gap-4">
-                  <Button onClick={handleStartSimulation} disabled={isRunning} className="px-6 py-2">
-                  Start Simulation
+                  <Button onClick={handleStartSimulation} disabled={isRunning || loadingState.startSimulation} className="px-6 py-2">
+                  Start Simulation {loadingState.startSimulation ? "..." : ""}
                   </Button>
-                  <Button onClick={handleResetSimulation} disabled={!isRunning} variant="outline" className="px-6 py-2 bg-transparent">
-                  Reset Simulation
+                  <Button onClick={handleResetSimulation} disabled={!isRunning || loadingState.stopSimulation} variant="outline" className="px-6 py-2 bg-transparent">
+                  Reset Simulation {loadingState.stopSimulation ? "..." : ""}
                   </Button>
               </div>
 
@@ -64,16 +150,20 @@ export function AdminControlPanel() {
                   <CardTitle className="text-lg text-center">System Status</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                  <div className="flex justify-between items-center">
-                      <span className="font-medium">Simulation Date:</span>
-                      <span className="text-sm font-mono">{formatDate(currentDate)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                      <span className="font-medium">System Status:</span>
-                      <span className={`font-medium ${isRunning ? "text-green-600" : "text-orange-600"}`}>
-                      {isRunning ? "Running" : "Has not started"}
-                      </span>
-                  </div>
+                    {errorState.systemStatus && <p className="text-red-600">{errorState.systemStatus}</p>}
+                    {loadingState.systemStatus && <p className="text-gray-600">Starting Simulation...</p>}
+                    {!loadingState.systemStatus && !errorState.systemStatus && <>
+                      <div className="flex justify-between items-center">
+                          <span className="font-medium">Simulation Date:</span>
+                          <span className="text-sm font-mono">{formatDate(currentDate)}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                          <span className="font-medium">System Status:</span>
+                          <span className={`font-medium ${isRunning ? "text-green-600" : "text-orange-600"}`}>
+                          {isRunning ? "Running" : "Has not started"}
+                          </span>
+                      </div>
+                    </>}
                   </CardContent>
               </Card>
               </CardContent>

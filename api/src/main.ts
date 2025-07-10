@@ -25,9 +25,19 @@ import { PayOrderUseCase } from './application/user-cases/pay-order.use-case';
 import { GetCollectionsUseCase } from './application/user-cases/get-collections.use-case';
 import { CollectItemUseCase } from './application/user-cases/collect-item.use-case';
 import { StopSimulationUseCase } from './application/user-cases/stop-simulation.use-case';
+import { AppDataSource as PopulationDataSource } from './domain/population/data-source';
+import { AppDataSource as MarketDataSource } from './domain/market/data-source';
+import { BreakPhonesUseCase } from './application/user-cases/break-phones.use-case';
 
 
 async function initializeApp() {
+    try {
+        await PopulationDataSource.initialize();
+        await MarketDataSource.initialize();
+    } catch (err) {
+        process.exit(1);
+    }
+
     const simulationRepo = new PgSimulationRepository();
     const marketRepo = new PgMarketRepository();
     const populationRepo = new PgPopulationRepository();
@@ -64,6 +74,7 @@ async function initializeApp() {
     const payOrderUseCase = new PayOrderUseCase(marketRepo);
     const getCollectionsUseCase = new GetCollectionsUseCase(marketRepo);
     const collectItemUseCase = new CollectItemUseCase(marketRepo);
+    const breakPhonesUseCase = new BreakPhonesUseCase(populationRepo);
 
     // Instantiate the Primary Adapter (the API Controller)
     const simulationController = new SimulationController(
@@ -85,14 +96,13 @@ async function initializeApp() {
         collectItemUseCase,
         simulationRepo,
         marketRepo,
-        populationRepo
+        populationRepo,
+        breakPhonesUseCase
     );
 
-    // Create and configure the Express application
     const app = express();
-    app.use(express.json()); // Middleware to parse JSON bodies
+    app.use(express.json());
 
-    // Swagger setup
     const swaggerOptions = {
         definition: {
             openapi: '3.0.0',
@@ -112,8 +122,6 @@ async function initializeApp() {
 
     const PORT = 3000;
     app.listen(PORT, () => {
-            console.log(`THoH API server is running on http://localhost:${PORT}`);
-    console.log('Persistence: PostgreSQL');
     console.log('API Documentation: http://localhost:3000/api-docs');
     });
 }
