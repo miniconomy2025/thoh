@@ -1,5 +1,8 @@
 export type Phone = {
   id: number;
-  model: string;
+  model: {
+    id: number;
+    name: string;
+  };
   isBroken: boolean;
 }

@@ -124,6 +124,25 @@ export class SimulationController {
 
         /**
          * @openapi
+         * /simulations:
+         *   get:
+         *     summary: Get the current simulation ID
+         *     responses:
+         *       200:
+         *         description: Current simulation ID
+         *       400:
+         *         description: Simulation not running
+         */
+        router.get('/simulations', async (req, res) => {
+            if (!this.simulationId) {
+                res.status(404).json({ error: 'Simulation is not running. Please start a simulation first using POST /simulations' });
+            } else {
+                res.status(200).json({ message: `Simulation is running. Current simulationId: ${this.simulationId}`, simulationId: this.simulationId });
+            }
+        });
+
+        /**
+         * @openapi
          * /people:
          *   get:
          *     summary: Get people and their salaries
