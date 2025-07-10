@@ -1,3 +1,4 @@
+import { ExternalsService } from '../../services/external-endpoints';
 import { ISimulationRepository, IMarketRepository } from '../ports/repository.ports';
 import { HandlePeriodicFailuresUseCase } from './handle-periodic-failures.use-case';
 
@@ -10,14 +11,20 @@ import { HandlePeriodicFailuresUseCase } from './handle-periodic-failures.use-ca
 //     ) {
 //         this.handlePeriodicFailuresUseCase = new HandlePeriodicFailuresUseCase(marketRepo);
 import { BreakPhonesUseCase } from './break-phones.use-case';
+import { RecyclePhonesUseCase } from './recycle-phones.use-case';
 
 export class AdvanceSimulationDayUseCase {
+  externalsService: ExternalsService;
+  recyclePhonesUseCase: RecyclePhonesUseCase;
   private handlePeriodicFailuresUseCase: HandlePeriodicFailuresUseCase;
   constructor(
     private readonly simulationRepo: ISimulationRepository,
     private readonly marketRepo: IMarketRepository,
     private readonly breakPhonesUseCase: BreakPhonesUseCase
-  ) {this.handlePeriodicFailuresUseCase = new HandlePeriodicFailuresUseCase(marketRepo);}
+  ) {
+    this.externalsService = new ExternalsService();
+    this.recyclePhonesUseCase = new RecyclePhonesUseCase();
+    this.handlePeriodicFailuresUseCase = new HandlePeriodicFailuresUseCase(marketRepo);}
 
   // public async execute(simulationId: number) {
   //   const simulation = await this.simulationRepo.findById(simulationId);
@@ -34,7 +41,17 @@ export class AdvanceSimulationDayUseCase {
         const rawMaterialsMarket = await this.marketRepo.findRawMaterialsMarket();
         const machinesMarket = await this.marketRepo.findMachinesMarket();
         const trucksMarket = await this.marketRepo.findTrucksMarket();
-        
+        try {
+          const grouped = await this.recyclePhonesUseCase.listGroupedByModel();
+          if (grouped.length > 0) {
+            await this.externalsService.notifyRecyclers();
+          }
+          else{
+            // Don't notify recyclers if no phones to recycle
+          }
+          } catch (err) {
+            // Do nothing here, we don't want the whole simulation to stop or fail if this endpoint fails
+            }
         if (!simulation || !rawMaterialsMarket || !machinesMarket || !trucksMarket) {
             throw new Error('Simulation or market not found');
         }
