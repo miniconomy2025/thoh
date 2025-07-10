@@ -36,22 +36,19 @@ export class PurchaseRawMaterialUseCase {
             
             const pricePerKg = result.amount / input.weightQuantity;
             
-            const order = new Order(
-                staticMaterial.name,
-                input.weightQuantity,
-                pricePerKg,
-                result.amount,
-                result.currency,
-                'pending', // Start with pending status
-                result.materialId, // Add the raw material ID
-                3 // Raw materials market ID
-            );
+            const order = new Order();
+            order.itemName = staticMaterial.name;
+            order.quantity = input.weightQuantity;
+            order.unitPrice = pricePerKg;
+            order.totalPrice = result.amount;
+            order.currency = result.currency;
+            order.status = 'pending';
+            order.itemId = result.materialId;
+            order.marketId = 3;
             order.item_type_id = await this.itemTypeRepo.findRawMaterialTypeId();
-            
             if (input.simulationDate) {
                 order.orderDate = input.simulationDate;
-            } 
-            
+            }
             const savedOrder = await this.marketRepo.saveOrder(order);
             
             return {

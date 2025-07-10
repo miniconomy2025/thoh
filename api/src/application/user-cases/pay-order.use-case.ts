@@ -43,7 +43,7 @@ export class PayOrderUseCase {
 
         const updatedOrder = await this.marketRepo.saveOrder(order);
 
-        const itemId = fulfillmentResult.itemIds && fulfillmentResult.itemIds.length > 0 ? fulfillmentResult.itemIds[0] : order.itemId;
+        const itemId = fulfillmentResult.itemIds && fulfillmentResult.itemIds.length > 0 ? fulfillmentResult.itemIds[0] : (order.itemId ?? 0);
         
         const collection = {
             orderId: order.id,
@@ -53,12 +53,10 @@ export class PayOrderUseCase {
             amountCollected: 0,
             orderDate: order.orderDate,
             collected: false,
+            id: 0 // or undefined if optional
         };
         
-        await this.marketRepo.saveCollection({
-          id: 0, // or undefined if optional
-          ...collection
-        });
+        await this.marketRepo.saveCollection(collection);
 
         return {
             orderId: updatedOrder.id,
@@ -72,7 +70,7 @@ export class PayOrderUseCase {
     }
 
     private async checkAndUpdateMarketInventory(order: Order): Promise<{ canFulfill: boolean; reason?: string; availableQuantity?: number; itemIds?: number[] }> {
-        const itemId = order.itemId;
+        const itemId = order.itemId ?? 0;
         const quantity = order.quantity;
 
         // Get item type name from item_type_id

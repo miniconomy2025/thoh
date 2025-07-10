@@ -1,5 +1,5 @@
 import { RawMaterialsMarket, MachinesMarket, TrucksMarket } from "../../domain/market/market.aggregate";
-import { Population } from "../../domain/population/population.aggregate";
+import { Population as PopulationEntity } from '../../domain/population/population.entity';
 import { Simulation } from "../../domain/simulation/simulation.aggregate";
 import { Order } from "../../domain/market/order.entity";
 import { Collection } from '../../domain/market/collection.entity';
@@ -40,6 +40,7 @@ export interface IMarketRepository {
 }
 
 export interface IPopulationRepository {
-    find(): Promise<Population | null>;
-    save(population: Population): Promise<void>;
+    find(): Promise<PopulationEntity | null>;
+    save(population: PopulationEntity): Promise<void>;
+    updatePerson(person: import('../../domain/population/person.entity').Person): Promise<void>;
 }

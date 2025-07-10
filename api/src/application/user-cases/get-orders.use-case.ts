@@ -16,7 +16,6 @@ export class GetOrdersUseCase {
             currency: order.currency,
             orderDate: order.orderDate,
             status: order.status,
-            itemType: order.itemType,
             item_type_id: order.item_type_id,
             marketId: order.marketId
         }));

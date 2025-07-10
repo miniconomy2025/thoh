@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Input } from "../components/ui/input"
 import { Card, CardContent, CardHeader } from "../components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
@@ -6,6 +6,12 @@ import { Badge } from "../components/ui/badge"
 import { Search, Filter } from "lucide-react"
 import { ModeToggle } from "../components/mode-toggle"
 import { SidebarTrigger } from "../components/ui/sidebar"
+import { isMachine, type Machine } from "../lib/types/machines.types"
+import { isApiError, manageLoading } from "../lib/utils"
+import simulationService from "../services/simulation.service"
+import { isTruck, type Truck } from "../lib/types/truck.types"
+import { isRawMaterial, type RawMaterial } from "../lib/types/rawMaterials.types"
+import { Skeleton } from "../components/ui/skeleton"
 
 interface InventoryItem {
   id: string
@@ -16,23 +22,116 @@ interface InventoryItem {
   unit: "kgs" | "units"
 }
 
+type RawMaterialsEquipmentLoadingState = {
+  getMachines: boolean;
+  getTrucks: boolean;
+  getRawMaterials: boolean;
+}
+
+type RawMaterialsEquipmentErrorState = {
+  getMachines: string | undefined;
+  getTrucks: string | undefined;
+  getRawMaterials: string | undefined;
+}
+
+const toInventoryItem = (item: Machine | Truck | RawMaterial): InventoryItem => {
+  if (isMachine(item)) {
+    return {
+      id: item.machineName,
+      category: "Machinery",
+      itemName: item.machineName,
+      price: item.price,
+      stock: item.quantity,
+      unit: "units"
+    };
+  } else if (isTruck(item)) {
+    return {
+      id: item.truckName,
+      category: "Transport",
+      itemName: item.truckName,
+      price: item.price,
+      stock: item.quantity,
+      unit: "units"
+    };
+  } else if (isRawMaterial(item)) {
+    return {
+      id: item.rawMaterialName,
+      category: "Raw Material",
+      itemName: item.rawMaterialName,
+      price: item.pricePerKg,
+      stock: item.quantityAvailable,
+      unit: "kgs"
+    };
+  } else {
+    throw new Error("Invalid item type");
+  }
+}
+
+
 export function RawMaterialsEquipment() {
   const [searchTerm, setSearchTerm] = useState("")
   const [sortBy, setSortBy] = useState("name")
   const [filterCategory, setFilterCategory] = useState("all")
+  const [loadingState, setLoadingState] = useState<RawMaterialsEquipmentLoadingState>({
+    getMachines: false,
+    getTrucks: false,
+    getRawMaterials: false
+  });
+  const [errorState, setErrorState] = useState<RawMaterialsEquipmentErrorState>({
+    getMachines: undefined,
+    getTrucks: undefined,
+    getRawMaterials: undefined
+  })
 
-  const [inventory] = useState<InventoryItem[]>([
-    { id: "1", category: "Raw Material", itemName: "Copper", price: 2500, stock: 1500, unit: "kgs" },
-    { id: "2", category: "Transport", itemName: "Small Truck", price: 45000, stock: 8, unit: "units" },
-    { id: "3", category: "Raw Material", itemName: "Sand", price: 180, stock: 5000, unit: "kgs" },
-    { id: "4", category: "Machinery", itemName: "Case Machine", price: 125000, stock: 3, unit: "units" },
-    { id: "5", category: "Transport", itemName: "Large Truck", price: 85000, stock: 5, unit: "units" },
-    { id: "6", category: "Machinery", itemName: "Recycler", price: 95000, stock: 2, unit: "units" },
-    { id: "7", category: "Raw Material", itemName: "Steel", price: 3200, stock: 2000, unit: "kgs" },
-    { id: "8", category: "Raw Material", itemName: "Aluminum", price: 2800, stock: 1200, unit: "kgs" },
-    { id: "9", category: "Transport", itemName: "Forklift", price: 25000, stock: 12, unit: "units" },
-    { id: "10", category: "Machinery", itemName: "Conveyor Belt", price: 15000, stock: 6, unit: "units" },
-  ])
+  const fetchMachines = async () => {
+    manageLoading<RawMaterialsEquipmentLoadingState>(['getMachines'], setLoadingState, async () => {
+      try {
+        const machines = await simulationService.getMachines();
+        if (isApiError(machines)) {
+          setErrorState((prev) => ({ ...prev, getMachines: machines.error }))
+        } else {
+          const machineInventory = machines.map(toInventoryItem);
+          setInventory((inventory) => [...inventory, ...machineInventory]);
+        }
+      } catch (error) {
+        setErrorState((prev) => ({ ...prev, getMachines: "Failed to fetch machines" }))
+      }
+    })
+  }
+
+  const fetchTrucks = async () => {
+    manageLoading<RawMaterialsEquipmentLoadingState>(['getTrucks'], setLoadingState, async () => {
+      try {
+        const trucks = await simulationService.getTrucks();
+        if (isApiError(trucks)) {
+          setErrorState((prev) => ({ ...prev, getTrucks: trucks.error }))
+        } else {
+          const truckInventory = trucks.map(toInventoryItem);
+          setInventory((inventory) => [...inventory, ...truckInventory]);
+        }
+      } catch (error) {
+        setErrorState((prev) => ({ ...prev, getTrucks: "Failed to fetch trucks" }))
+      }
+    })
+  }
+
+  const fetchRawMaterials = async () => {
+    manageLoading<RawMaterialsEquipmentLoadingState>(['getRawMaterials'], setLoadingState, async () => {
+      try {
+        const rawMaterials = await simulationService.getRawMaterials();
+        if (isApiError(rawMaterials)) {
+          setErrorState((prev) => ({ ...prev, getRawMaterials: rawMaterials.error }))
+        } else {
+          const rawMaterialInventory = rawMaterials.map(toInventoryItem);
+          setInventory((inventory) => [...inventory, ...rawMaterialInventory]);
+        }
+      } catch (error) {
+        setErrorState((prev) => ({ ...prev, getRawMaterials: "Failed to fetch raw materials" }))
+      }
+    })
+  }
+
+  const [inventory, setInventory] = useState<InventoryItem[]>([])
 
   const filteredAndSortedItems = useMemo(() => {
     const filtered = inventory.filter((item) => {
@@ -85,6 +184,12 @@ export function RawMaterialsEquipment() {
       return { color: "text-green-600", status: "In Stock" }
     }
   }
+
+  useEffect(() => {
+    fetchMachines();
+    fetchTrucks();
+    fetchRawMaterials();
+  }, [])
 
   return (
     <>
@@ -146,10 +251,10 @@ export function RawMaterialsEquipment() {
               <p className="text-gray-500 text-lg">No items found matching your criteria.</p>
             </div>
           ) : (
-            filteredAndSortedItems.map((item) => {
+            filteredAndSortedItems.map((item, index) => {
               const stockStatus = getStockStatus(item.stock, item.unit)
               return (
-                <Card key={item.id} className="hover:shadow-md transition-shadow">
+                <Card key={index} className="hover:shadow-md transition-shadow">
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-start">
                       <Badge className={getCategoryColor(item.category)}>{item.category}</Badge>
@@ -176,6 +281,16 @@ export function RawMaterialsEquipment() {
               )
             })
           )}
+          {/* Loading skeletons */}
+          {loadingState.getRawMaterials ? (
+            <Skeleton className="w-full" />
+          ) : null}
+          {loadingState.getTrucks ? (
+            <Skeleton className="w-full" />
+          ) : null}
+          {loadingState.getMachines ? (
+            <Skeleton className="w-full" />
+          ) : null}
         </div>
 
         {/* Summary Statistics */}

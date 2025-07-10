@@ -19,6 +19,16 @@ import { runDailyTasks, SIM_DAY_INTERVAL_MS } from '../../scheduling/daily-tasks
 import { IMarketRepository } from '../../../application/ports/repository.ports';
 import { PgCurrencyRepository } from '../../persistence/postgres/currency.repository';
 import { StopSimulationUseCase } from '../../../application/user-cases/stop-simulation.use-case';
+import { RecycleRepository } from '../../persistence/postgres/recycle.repository';
+import { RecyclePhonesUseCase } from '../../../application/user-cases/recycle-phones.use-case';
+import { BreakPhonesUseCase } from '../../../application/user-cases/break-phones.use-case';
+import { PersonRepository } from '../../persistence/postgres/person.repository';
+import { PhoneRepository } from '../../persistence/postgres/phone.repository';
+import { PhoneStaticRepository } from '../../persistence/postgres/phone-static.repository';
+import { Phone } from '../../../domain/population/phone.entity';
+import { AppDataSource } from '../../../domain/population/data-source';
+import { Person } from '../../../domain/population/person.entity';
+import { PhoneStatic } from '../../../domain/population/phone-static.entity';
 import { MutexWrapper } from '../../concurrency';
 import { Month, Chart, KeyValueCache } from '../../../domain/shared/value-objects';
 import { getScaledDate, calculateDaysElapsed } from '../../utils';
@@ -54,9 +64,10 @@ export class SimulationController {
         private readonly collectItemUseCase: CollectItemUseCase,
         private readonly simulationRepo: unknown,
         private readonly marketRepo: IMarketRepository,
-        private readonly populationRepo: unknown
+        private readonly populationRepo: unknown,
+        private readonly breakPhonesUseCase: BreakPhonesUseCase
     ) {
-        this.advanceSimulationDayUseCase = new AdvanceSimulationDayUseCase(this.simulationRepo as any, this.marketRepo);
+        this.advanceSimulationDayUseCase = new AdvanceSimulationDayUseCase(this.simulationRepo as any, this.marketRepo, this.breakPhonesUseCase);
     }
 
     private validateSimulationRunning(res: Response): boolean {
@@ -99,7 +110,8 @@ export class SimulationController {
                     if (simulation && rawMaterialsMarket && machinesMarket && trucksMarket) {
                         const advanceDayUseCase = new AdvanceSimulationDayUseCase(
                             simulation,
-                            this.marketRepo
+                            this.marketRepo,
+                            this.breakPhonesUseCase
                         );
                         this.dailyJobInterval = setInterval(async () => {
                             if (this.simulationId) {
@@ -123,6 +135,25 @@ export class SimulationController {
 
         /**
          * @openapi
+         * /simulations:
+         *   get:
+         *     summary: Get the current simulation ID
+         *     responses:
+         *       200:
+         *         description: Current simulation ID
+         *       400:
+         *         description: Simulation not running
+         */
+        router.get('/simulations', async (req, res) => {
+            if (!this.simulationId) {
+                res.status(404).json({ error: 'Simulation is not running. Please start a simulation first using POST /simulations' });
+            } else {
+                res.status(200).json({ message: `Simulation is running. Current simulationId: ${this.simulationId}`, simulationId: this.simulationId });
+            }
+        });
+
+        /**
+         * @openapi
          * /people:
          *   get:
          *     summary: Get people and their salaries
@@ -137,8 +168,69 @@ export class SimulationController {
             
             try {
                 const state = await this.getPeopleStateUseCase.execute();
+                console.log('GET /people response:', state);
                 res.json(state);
             } catch (err: unknown) {
+                res.status(500).json({ error: (err as Error).message });
+            }
+        });
+
+        /**
+         * @openapi
+         * /people/{personId}/phones:
+         *   post:
+         *     summary: Purchase a phone for a person
+         *     parameters:
+         *       - in: path
+         *         name: personId
+         *         required: true
+         *         schema:
+         *           type: integer
+         *     requestBody:
+         *       required: true
+         *       content:
+         *         application/json:
+         *           schema:
+         *             type: object
+         *             properties:
+         *               phoneName:
+         *                 type: string
+         *     responses:
+         *       200:
+         *         description: Phone purchased successfully
+         *       400:
+         *         description: Invalid request
+         *       404:
+         *         description: Person or Phone model not found
+         *       500:
+         *         description: Error
+         */
+        router.post('/people/phones', async (req, res) => {
+            const { phoneName, personId } = req.body;
+            if (!personId || isNaN(personId) || !phoneName || typeof phoneName !== 'string') {
+                return res.status(400).json({ error: 'personId (number, in URL or body) and phoneName (string, in body) are required' });
+            }
+            try {
+                // Find the phone model
+                const phoneModel = await PhoneStaticRepository.getRepo().findOne({ where: { name: phoneName } });
+                if (!phoneModel) {
+                    return res.status(404).json({ error: `Phone model '${phoneName}' not found` });
+                }
+                // Create the phone
+                const phone = new Phone();
+                phone.model = phoneModel;
+                phone.isBroken = false;
+                await PhoneRepository.prototype.save.call({ repo: PhoneRepository.getRepo() }, phone);
+                // Minimal update: set phoneId for the person
+                const updateResult = await PersonRepository.getRepo().update({ id: personId }, { phone: { id: phone.id } });
+                if (updateResult.affected === 0) {
+                    return res.status(404).json({ error: `Person with id ${personId} not found` });
+                }
+                // Extra logging: fetch and log the updated person
+                const updatedPerson = await PersonRepository.getRepo().findOne({ where: { id: personId }, relations: ['phone', 'phone.model'] });
+                console.log('After phone purchase, updated person:', updatedPerson);
+                res.json({ message: `Person ${personId} successfully purchased phone '${phoneName}'`, personId, phoneId: phone.id });
+            } catch (err) {
                 res.status(500).json({ error: (err as Error).message });
             }
         });
@@ -641,6 +733,10 @@ export class SimulationController {
             
             try {
                 const { materialName, weightQuantity } = req.body;
+
+                if(weightQuantity <= 0 || !weightQuantity) {
+                    throw new Error('Weight quantity must be greater than 0');
+                }
                 
                 // Get current simulation date
                 let simulationDate: Date | undefined;
@@ -887,6 +983,84 @@ export class SimulationController {
                 } else {
                     res.status(500).json({ error: (err as Error).message });
                 }
+            }
+        });
+
+        const recyclePhonesUseCase = new RecyclePhonesUseCase();
+        /**
+         * @openapi
+         * /recycled-phones:
+         *   get:
+         *     summary: Get all recycled (broken) phones grouped by model
+         *     responses:
+         *       200:
+         *         description: List of recycled phones grouped by model
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: array
+         *               items:
+         *                 type: object
+         *                 properties:
+         *                   modelId:
+         *                     type: integer
+         *                   modelName:
+         *                     type: string
+         *                   quantity:
+         *                     type: integer
+         */
+        router.get('/recycled-phones', async (req, res) => {
+            try {
+                const grouped = await recyclePhonesUseCase.listGroupedByModel();
+                res.json(grouped);
+            } catch (err) {
+                res.status(500).json({ error: (err as Error).message });
+            }
+        });
+
+        /**
+         * @openapi
+         * /recycled-phones:
+         *   patch:
+         *     summary: Collect recycled phones by model name and quantity
+         *     requestBody:
+         *       required: true
+         *       content:
+         *         application/json:
+         *           schema:
+         *             type: object
+         *             properties:
+         *               modelName:
+         *                 type: string
+         *               quantity:
+         *                 type: integer
+         *     responses:
+         *       200:
+         *         description: Number of phones collected and remaining
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 collected:
+         *                   type: integer
+         *                 remaining:
+         *                   type: integer
+         *       400:
+         *         description: Invalid request
+         *       500:
+         *         description: Error
+         */
+        router.patch('/recycled-phones', async (req, res) => {
+            const { modelName, quantity } = req.body;
+            if (!modelName || typeof modelName !== 'string' || !quantity || typeof quantity !== 'number') {
+                return res.status(400).json({ error: 'modelName (string) and quantity (number) are required' });
+            }
+            try {
+                const result = await recyclePhonesUseCase.collectByModelName(modelName, quantity);
+                res.json(result);
+            } catch (err) {
+                res.status(500).json({ error: (err as Error).message });
             }
         });
 

@@ -1,15 +1,22 @@
 import { CONSTANTS } from "../lib/constants";
+import type { Machine } from "../lib/types/machines.types";
 import type { People } from "../lib/types/people.types";
+import type { RawMaterial } from "../lib/types/rawMaterials.types";
 import type { BaseApiError } from "../lib/types/shared.types";
 import type { SimulationInfoResponse, StartSimulationResponse, StopSimulationResponse } from "../lib/types/simulation.types";
 import type { EpochTimeResponse, SimulationTime, SimulationTimeResponse } from "../lib/types/time.types";
+import type { Truck } from "../lib/types/truck.types";
 
 export type SimulationService = {
   startSimulation: () => Promise<StartSimulationResponse | BaseApiError>,
+  getSimulation: () => Promise<StartSimulationResponse | BaseApiError>,
   stopSimulation: () => Promise<StopSimulationResponse | BaseApiError>,
   getPeople: () => Promise<People | BaseApiError>,
   getEpochTime: () => Promise<Date | BaseApiError>,
   getCurrentSimulationTime: () => Promise<SimulationTime | BaseApiError>,
+  getMachines: () => Promise<Machine[] | BaseApiError>,
+  getTrucks: () => Promise<Truck[] | BaseApiError>,
+  getRawMaterials: () => Promise<RawMaterial[] | BaseApiError>,
   simulationInfo: () => Promise<SimulationInfoResponse | BaseApiError>
 }
 
@@ -32,7 +39,7 @@ const simulationService: SimulationService = {
 
     if (response.ok) {
       const data = await response.json();
-      return data as People;
+      return data.people as People;
     } else {
       const error = await response.json();
       return error as BaseApiError;
@@ -72,6 +79,50 @@ const simulationService: SimulationService = {
       const data = await response.json();
       return data as StopSimulationResponse;
     } else {
+      const error = await response.json();
+      return error as BaseApiError;
+    }
+  },
+  getMachines: async function (): Promise<Machine[] | BaseApiError> {
+    const response = await fetch(`${CONSTANTS.API_URL}/machines`);
+
+    if (response.ok) {
+      const data = await response.json();
+      return data.machines as Machine[];
+    } else {
+      const error = await response.json();
+      return error as BaseApiError;
+    }
+  },
+  getTrucks: async function (): Promise<Truck[] | BaseApiError> {
+    const response = await fetch(`${CONSTANTS.API_URL}/trucks`);
+    if (response.ok) {
+      const data = await response.json();
+      return data as Truck[];
+    } else {
+      const error = await response.json();
+      return error as BaseApiError;
+    }
+  },
+  getRawMaterials: async function (): Promise<RawMaterial[] | BaseApiError> {
+    const response = await fetch(`${CONSTANTS.API_URL}/raw-materials`);
+
+    if (response.ok) {
+      const data = await response.json();
+      return data as RawMaterial[];
+    } else {
+      const error = await response.json();
+      return error as BaseApiError;
+    }
+  },
+
+  getSimulation: async function (): Promise<StartSimulationResponse | BaseApiError> {
+    const response = await fetch(`${CONSTANTS.API_URL}/simulations`);
+
+    if (response.ok) {
+      const data = await response.json();
+      return data as StartSimulationResponse;
+      } else {
       const error = await response.json();
       return error as BaseApiError;
     }

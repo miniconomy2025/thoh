@@ -1,12 +1,12 @@
 import 'dotenv/config';
 import { DataSource } from "typeorm";
-import { Machine } from "./machine.entity";
-import { Truck } from "./vehicle.entity";
-import { RawMaterial } from "./raw-material.entity";
-import { Collection } from "./collection.entity";
+import { Person } from "./person.entity";
+import { Phone } from "./phone.entity";
+import { PhoneStatic } from "./phone-static.entity";
+import { Population } from "./population.entity";
 import { Simulation } from "../simulation/simulation.entity";
-import { Order } from "./order.entity";
-import { MaterialStatic } from "./material-static.entity";
+import { Recycle } from "./recycle.entity";
+
 export const AppDataSource = new DataSource({
   type: "postgres",
   host: process.env.POSTGRES_HOST ,
@@ -16,6 +16,6 @@ export const AppDataSource = new DataSource({
   database: process.env.POSTGRES_DB ,
   synchronize: false,
   logging: true,
-      entities: [Order, Machine, Truck, RawMaterial, Collection, Simulation, MaterialStatic],
+  entities: [Person, Phone, PhoneStatic, Population, Simulation, Recycle],
   migrations: ["src/infrastructure/persistence/postgres/migrations/*.ts"],
 }); 
