@@ -39,22 +39,19 @@ export class PurchaseTruckUseCase {
 
         const totalPrice = truck.cost.amount * input.quantity;
         
-        const order = new Order(
-            staticTruck.name,
-            input.quantity,
-            truck.cost.amount,
-            totalPrice,
-            truck.cost.currency,
-            'pending', // Start with pending status
-            truck.vehicleStaticId, // Use static ID instead of market ID
-            2 // Vehicle/Truck market ID
-        );
+        const order = new Order();
+        order.itemName = staticTruck.name;
+        order.quantity = input.quantity;
+        order.unitPrice = truck.cost.amount;
+        order.totalPrice = totalPrice;
+        order.currency = truck.cost.currency;
+        order.status = 'pending';
+        order.itemId = truck.vehicleStaticId;
+        order.marketId = 2;
         order.item_type_id = await this.itemTypeRepo.findTruckTypeId();
-        
         if (input.simulationDate) {
             order.orderDate = input.simulationDate;
         }
-        
         const savedOrder = await this.marketRepo.saveOrder(order);
 
         return {

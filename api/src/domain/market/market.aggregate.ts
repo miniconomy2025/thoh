@@ -60,18 +60,13 @@ export class RawMaterialsMarket {
     }
 
     public applyDailyRandomness() {
-        const config = getMarketConfig();
         for (const material of this.rawMaterials) {
+            // Randomize price (e.g., ±10%)
             const priceChange = 1 + (Math.random() - 0.5) * 0.2;
-            let newPrice = material.costPerKg * priceChange;
-            if (!Number.isFinite(newPrice) || isNaN(newPrice)) {
-                newPrice = 1;
-            }
-            newPrice = Math.max(1, newPrice);
-            material.updatePrice(newPrice);
-            
-            const incrementalQuantity = Math.max(1, Math.floor( material.availableWeight * 0.02 * (0.8 + Math.random() * 0.4))); // 1.6% to 2.4%
-            material.adjustAvailability(incrementalQuantity);
+            material.costPerKg = Math.max(1, Math.round(material.costPerKg * priceChange * 100) / 100);
+            // Optionally randomize availableWeight (e.g., simulate supply changes)
+            // const weightChange = 1 + (Math.random() - 0.5) * 0.1;
+            // material.availableWeight = Math.max(0, Math.round(material.availableWeight * weightChange));
         }
     }
 

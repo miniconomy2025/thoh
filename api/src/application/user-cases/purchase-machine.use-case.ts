@@ -40,23 +40,19 @@ export class PurchaseMachineUseCase {
 
         const totalPrice = machine.cost.amount * input.quantity;
         
-        const order = new Order(
-            staticMachine.name,
-            input.quantity,
-            machine.cost.amount,
-            totalPrice,
-            machine.cost.currency,
-            'pending', // Start with pending status
-            machine.machineStaticId, // Use static ID instead of market ID
-            1 // Machine market ID
-        );
+        const order = new Order();
+        order.itemName = staticMachine.name;
+        order.quantity = input.quantity;
+        order.unitPrice = machine.cost.amount;
+        order.totalPrice = totalPrice;
+        order.currency = machine.cost.currency;
+        order.status = 'pending';
+        order.itemId = machine.machineStaticId;
+        order.marketId = 1;
         order.item_type_id = await this.itemTypeRepo.findMachineTypeId();
-        
-        // Set the order date to simulation date if provided
         if (input.simulationDate) {
             order.orderDate = input.simulationDate;
         }
-        
         const savedOrder = await this.marketRepo.saveOrder(order);
 
         return {

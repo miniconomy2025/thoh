@@ -29,6 +29,17 @@ export class PopulateStaticTables1751828335847 implements MigrationInterface {
             ('recycling_machine', 'can recycle any phone')
         `);
 
+        // Populate phone_static
+        await queryRunner.query(`
+            INSERT INTO phone_static (name, description) VALUES
+            ('ePhone', 'ePhone base model'),
+            ('ePhone_plus', 'ePhone Plus model'),
+            ('ePhone_pro_max', 'ePhone Pro Max model'),
+            ('Cosmos_Z25', 'Cosmos Z25 base model'),
+            ('Cosmos_Z25_ultra', 'Cosmos Z25 Ultra model'),
+            ('Cosmos_Z25_FE', 'Cosmos Z25 Fan Edition')
+        `);
+
         // Populate vehicle_static (example entries)
         await queryRunner.query(`
             INSERT INTO vehicle_static (name, description) VALUES
@@ -39,6 +50,7 @@ export class PopulateStaticTables1751828335847 implements MigrationInterface {
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.query(`DELETE FROM phone_static`);
         await queryRunner.query(`DELETE FROM vehicle_static`);
         await queryRunner.query(`DELETE FROM machine_static`);
         await queryRunner.query(`DELETE FROM material_static`);

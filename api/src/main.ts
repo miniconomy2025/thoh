@@ -25,9 +25,22 @@ import { PayOrderUseCase } from './application/user-cases/pay-order.use-case';
 import { GetCollectionsUseCase } from './application/user-cases/get-collections.use-case';
 import { CollectItemUseCase } from './application/user-cases/collect-item.use-case';
 import { StopSimulationUseCase } from './application/user-cases/stop-simulation.use-case';
+import { AppDataSource as PopulationDataSource } from './domain/population/data-source';
+import { AppDataSource as MarketDataSource } from './domain/market/data-source';
+import { BreakPhonesUseCase } from './application/user-cases/break-phones.use-case';
 
 
 async function initializeApp() {
+    try {
+        await PopulationDataSource.initialize();
+        console.log('Population DataSource has been initialized!');
+        await MarketDataSource.initialize();
+        console.log('Market DataSource has been initialized!');
+    } catch (err) {
+        console.error('Error during DataSource initialization', err);
+        process.exit(1);
+    }
+
     const simulationRepo = new PgSimulationRepository();
     const marketRepo = new PgMarketRepository();
     const populationRepo = new PgPopulationRepository();
@@ -64,6 +77,7 @@ async function initializeApp() {
     const payOrderUseCase = new PayOrderUseCase(marketRepo);
     const getCollectionsUseCase = new GetCollectionsUseCase(marketRepo);
     const collectItemUseCase = new CollectItemUseCase(marketRepo);
+    const breakPhonesUseCase = new BreakPhonesUseCase(populationRepo);
 
     // Instantiate the Primary Adapter (the API Controller)
     const simulationController = new SimulationController(
@@ -85,7 +99,8 @@ async function initializeApp() {
         collectItemUseCase,
         simulationRepo,
         marketRepo,
-        populationRepo
+        populationRepo,
+        breakPhonesUseCase
     );
 
     // Create and configure the Express application

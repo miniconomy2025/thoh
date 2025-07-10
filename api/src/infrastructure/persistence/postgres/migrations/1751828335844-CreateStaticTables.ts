@@ -31,9 +31,17 @@ export class CreateStaticTables1751828335844 implements MigrationInterface {
                 CONSTRAINT "FK_vehicle_static_vehicle" FOREIGN KEY ("vehicle_id") REFERENCES "vehicle"("id") ON DELETE SET NULL
             )
         `);
+        await queryRunner.query(`
+            CREATE TABLE "phone_static" (
+                "id" SERIAL PRIMARY KEY,
+                "name" varchar UNIQUE NOT NULL,
+                "description" text
+            )
+        `);
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.query(`DROP TABLE "phone_static"`);
         await queryRunner.query(`DROP TABLE "vehicle_static"`);
         await queryRunner.query(`DROP TABLE "material_static"`);
         await queryRunner.query(`DROP TABLE "machine_static"`);
