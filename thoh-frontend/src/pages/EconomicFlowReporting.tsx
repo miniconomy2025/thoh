@@ -17,7 +17,7 @@ interface Entity {
   id: string
   type: string
   name: string
-  accountValue: number
+  accountValue: string
 }
 
 interface ActivityItem {
@@ -37,13 +37,24 @@ export function EconomicFlowReporting() {
   const [activities, setActivities] = useState<ActivityItem[]>([])
 
   const [entities, setEntities] = useState<Entity[]>([
-    { id: "1", type: "Supplier", name: "Global Materials Ltd", accountValue: 450000 },
-    { id: "2", type: "Logistics", name: "FastTrans Corp", accountValue: 125000 },
-    { id: "3", type: "Retail Bank", name: "RetailBank1", accountValue: 890000 },
-    { id: "4", type: "Commercial Bank", name: "CommercialBank Pro", accountValue: 1200000 },
-    { id: "5", type: "Phone Companies", name: "TechPhone Inc", accountValue: 340000 },
-    { id: "6", type: "Recycler", name: "EcoRecycle Solutions", accountValue: 85000 },
+    { id: "1", type: "Supplier", name: "Global Materials Ltd", accountValue: "450000" },
+    { id: "2", type: "Logistics", name: "FastTrans Corp", accountValue: "125000" },
+    { id: "3", type: "Retail Bank", name: "RetailBank1", accountValue: "890000" },
+    { id: "4", type: "Commercial Bank", name: "CommercialBank Pro", accountValue: "1200000" },
+    { id: "5", type: "Phone Companies", name: "TechPhone Inc", accountValue: "340000" },
+    { id: "6", type: "Recycler", name: "EcoRecycle Solutions", accountValue: "85000" },
   ])
+
+  function getEntityName(type: string): string | undefined {
+    return [
+      "Global Materials Ltd",
+      "FastTrans Corp",
+      "RetailBank1",
+      "CommercialBank Pro",
+      "TechPhone Inc",
+      "EcoRecycle Solutions"
+    ].find((name) => name.toLowerCase().includes(type.toLowerCase()));
+  }
 
   useEffect(() => {
     let interval: NodeJS.Timeout | undefined = undefined;
@@ -57,13 +68,20 @@ export function EconomicFlowReporting() {
           setMachineryChartData(simulationInfo.machinery);
           setTruckChartData(simulationInfo.trucks);
           setRawMaterialsData(simulationInfo.rawMaterials);
-    
-          setEntities((prev) => prev.map((entity) => ({
-            ...entity,
-            accountValue: entity.accountValue + Math.floor(Math.random() * 10000) - 5000
-          })))
         } else{
           throw new Error(simulationInfo.error);
+        }
+
+        const entityInfo = await simulationService.entityInfo();
+        if (!isApiError(entityInfo)) {
+          setEntities(entityInfo.map((entity) => {
+            return {
+              id: entity.id.toString(),
+              type: entity.name,
+              name: entity.name,
+              accountValue: entity.balance
+            }
+          }));
         }
   
       }, 2000) // Update every 2 seconds
@@ -75,10 +93,6 @@ export function EconomicFlowReporting() {
     return () => clearInterval(interval)
   }, [])
 
-  const formatCurrency = (amount: number) => {
-    return `Đ ${amount.toLocaleString()}`
-  }
-
   const getEntityTypeColor = (type: string) => {
     const colors: { [key: string]: string } = {
       "Supplier": "bg-blue-100 text-blue-800",
@@ -89,6 +103,10 @@ export function EconomicFlowReporting() {
       "Recycler": "bg-emerald-100 text-emerald-800",
     }
     return colors[type] || "bg-gray-100 text-gray-800"
+  }
+
+  function formatCurrency(amount: number) {
+    return `Đ ${amount.toLocaleString()}`
   }
 
   return (
@@ -158,8 +176,8 @@ export function EconomicFlowReporting() {
                         <TableCell>
                           <Badge className={getEntityTypeColor(entity.type)}>{entity.type}</Badge>
                         </TableCell>
-                        <TableCell className="font-medium">{entity.name}</TableCell>
-                        <TableCell className="text-right font-mono">{formatCurrency(entity.accountValue)}</TableCell>
+                        <TableCell className="font-medium">{getEntityName(entity.type) ?? "Unknown"}</TableCell>
+                        <TableCell className="text-right font-mono">Đ {entity.accountValue}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

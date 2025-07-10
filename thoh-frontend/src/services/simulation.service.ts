@@ -3,7 +3,7 @@ import type { Machine } from "../lib/types/machines.types";
 import type { People } from "../lib/types/people.types";
 import type { RawMaterial } from "../lib/types/rawMaterials.types";
 import type { BaseApiError } from "../lib/types/shared.types";
-import type { SimulationInfoResponse, StartSimulationResponse, StopSimulationResponse } from "../lib/types/simulation.types";
+import type { EntityInfoResponse, SimulationInfoResponse, StartSimulationResponse, StopSimulationResponse } from "../lib/types/simulation.types";
 import type { EpochTimeResponse, SimulationTime, SimulationTimeResponse } from "../lib/types/time.types";
 import type { Truck } from "../lib/types/truck.types";
 
@@ -17,7 +17,8 @@ export type SimulationService = {
   getMachines: () => Promise<Machine[] | BaseApiError>,
   getTrucks: () => Promise<Truck[] | BaseApiError>,
   getRawMaterials: () => Promise<RawMaterial[] | BaseApiError>,
-  simulationInfo: () => Promise<SimulationInfoResponse | BaseApiError>
+  simulationInfo: () => Promise<SimulationInfoResponse | BaseApiError>,
+  entityInfo: () => Promise<EntityInfoResponse[] | BaseApiError>,
 }
 
 const simulationService: SimulationService = {
@@ -133,6 +134,17 @@ const simulationService: SimulationService = {
     if (response.ok) {
       const data = await response.json();
       return data as SimulationInfoResponse;
+    } else {
+      const error = await response.json();
+      return error as BaseApiError;
+    }
+  },
+  entityInfo: async function (): Promise<EntityInfoResponse[] | BaseApiError> {
+    const response = await fetch(`${CONSTANTS.COMMERCIAL_BANK_URL}/api/dashboard/accounts`);
+
+    if (response.ok) {
+      const data = await response.json();
+      return data as EntityInfoResponse[];
     } else {
       const error = await response.json();
       return error as BaseApiError;
