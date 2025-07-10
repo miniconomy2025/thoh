@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from "express";
+import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import RateLimit from 'express-rate-limit';
@@ -102,9 +103,8 @@ async function initializeApp() {
     );
 
     const app = express();
-
-    app.use(express.json()); // Middleware to parse JSON bodies
-
+    app.use(cors());
+    app.use(express.json());
 
     const swaggerOptions = {
         definition: {
@@ -119,6 +119,10 @@ async function initializeApp() {
     };
     const swaggerSpec = swaggerJsdoc(swaggerOptions);
     app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+    app.get('/swagger.json', (req, res) => {
+        res.setHeader('Content-Type', 'application/json');
+        res.send(swaggerSpec);
+    });
 
     // Setup all routes via registerRoutes
     registerRoutes(app, { simulationController });
