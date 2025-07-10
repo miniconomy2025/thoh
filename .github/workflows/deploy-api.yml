@@ -41,6 +41,10 @@ jobs:
           DB_NAME=${{ vars.POSTGRES_DB }}
           DB_USER=${{ vars.POSTGRES_USER }}
           DB_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          MACHINE_FAILURE_URLS=${{ secrets.MACHINE_FAILURE_URLS }}
+          TRUCK_FAILURE_URLS=${{ secrets.TRUCK_FAILURE_URLS }}
+          BANK_RATE_UPDATE_URL=${{ secrets.BANK_RATE_UPDATE_URL }}
+          EPOCH_NOTIFICATION_URLS=${{ secrets.EPOCH_NOTIFICATION_URLS }}
           APPLICATION_NAME=${{ vars.APPLICATION_NAME }}
           REST_BASE_PATH=${{ vars.REST_BASE_PATH }}
           API_BASEURL=${{ vars.EC2_HOST }}${{ vars.REST_BASE_PATH }}
