@@ -1,30 +1,7 @@
-import { Edit, Plus, Search, Trash2 } from "lucide-react"
+import { Search } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { ModeToggle } from "../components/mode-toggle"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "../components/ui/alert-dialog"
-import { Button } from "../components/ui/button"
-import { Checkbox } from "../components/ui/checkbox"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "../components/ui/dialog"
 import { Input } from "../components/ui/input"
-import { Label } from "../components/ui/label"
 import { Paginator } from "../components/ui/paginator"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select"
 import { SidebarTrigger } from "../components/ui/sidebar"
@@ -32,12 +9,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import type { Person } from "../lib/types/people.types"
 import { isApiError, manageLoading } from "../lib/utils"
 import simulationService from "../services/simulation.service"
-
-type EditPersonFormData = {
-  salary: number;
-  phoneModel: string | undefined;
-  phoneWorking: boolean;
-}
 
 type PeopleSalaryManagerLoadingState = {
   getPeople: boolean
@@ -52,13 +23,6 @@ export function PeopleSalaryManager() {
   const [people, setPeople] = useState<Person[]>([])
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(5)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [editingPerson, setEditingPerson] = useState<Person | null>(null)
-  const [formData, setFormData] = useState<EditPersonFormData>({
-    salary: 0,
-    phoneModel: "",
-    phoneWorking: false
-  });
 
   const [loadingState, setLoadingState] = useState<PeopleSalaryManagerLoadingState>({
     getPeople: false
@@ -66,51 +30,6 @@ export function PeopleSalaryManager() {
   const [errorState, setErrorState] = useState<PeopleSalaryManagerErrorState>({
     getPeople: undefined
   })
-
-  const handleAddPerson = () => {
-    setEditingPerson(null)
-    setFormData({
-      salary: 0,
-      phoneModel: "",
-      phoneWorking: false
-    })
-    setIsDialogOpen(true)
-  }
-
-  const handleEditPerson = (person: Person) => {
-    setEditingPerson(person)
-    setFormData({
-      salary: person.salary,
-      phoneModel: person.phone?.model,
-      phoneWorking: person.phoneWorking
-    })
-    setIsDialogOpen(true)
-  }
-
-  const handleDeletePerson = (id: number) => {
-    setPeople(people.filter((person) => person.id !== id))
-  }
-
-  const handleSubmit = () => {
-    const newPerson: Person = {
-      id: editingPerson ? editingPerson.id : people.length + 1,
-      salary: formData.salary,
-      phone: {
-        id: editingPerson?.phone?.id ?? 1,
-        model: formData.phoneModel ?? "",
-        isBroken: formData.phoneWorking
-      },
-      phoneWorking: formData.phoneWorking
-    }
-
-    if (editingPerson) {
-      setPeople(people.map((person) => (person.id === editingPerson.id ? newPerson : person)))
-    } else {
-      setPeople([...people, newPerson])
-    }
-
-    setIsDialogOpen(false)
-  }
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-ZA", {
@@ -170,65 +89,6 @@ export function PeopleSalaryManager() {
               className="pl-10"
             />
           </div>
-          
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={handleAddPerson} className="ml-4">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Person
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>{editingPerson ? "Edit Person" : "Add New Person"}</DialogTitle>
-                <DialogDescription>
-                  {editingPerson ? "Update the person information below." : "Enter the details for the new person."}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="salary" className="text-right">
-                    Salary
-                  </Label>
-                  <Input
-                    id="salary"
-                    type="number"
-                    step="0.01"
-                    value={formData.salary}
-                    onChange={(e) => setFormData({ ...formData, salary: Number(e.target.value) })}
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="phone" className="text-right">
-                    Phone Model
-                  </Label>
-                  <Input
-                    id="phone"
-                    value={formData.phoneModel}
-                    onChange={(e) => setFormData({ ...formData, phoneModel: e.target.value })}
-                    className="col-span-3"
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="deceased" className="text-right">
-                    Phone Working
-                  </Label>
-                  <Checkbox
-                    id="deceased"
-                    checked={formData.phoneWorking}
-                    onCheckedChange={(checked: any) => setFormData({ ...formData, phoneWorking: checked as boolean })}
-                    className="col-span-3"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button type="submit" onClick={handleSubmit}>
-                  {editingPerson ? "Update" : "Add"} Person
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </div>
 
         {errorState.getPeople ? 
@@ -258,7 +118,6 @@ export function PeopleSalaryManager() {
                     <TableHead className="font-semibold">Phone Model</TableHead>
                     <TableHead className="font-semibold">Phone Working</TableHead>
                     <TableHead className="font-semibold">Salary</TableHead>
-                    <TableHead className="font-semibold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -270,38 +129,12 @@ export function PeopleSalaryManager() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    paginatedPeople.map((person) => (
-                      <TableRow key={person.id} className={person.phoneWorking ? "opacity-60" : ""}>
+                    paginatedPeople.map((person, index) => (
+                      <TableRow key={index} className={!person.phoneWorking ? "opacity-60" : ""}>
                         <TableCell className="font-medium">{person.id}</TableCell>
-                        <TableCell className="text-center">{person.phone?.model}</TableCell>
-                        <TableCell className="text-center">{person.phoneWorking}</TableCell>
+                        <TableCell className="text-center">{person.phone?.model.name || "-"}</TableCell>
+                        <TableCell className="text-center">{person.phone && person.phoneWorking ? "Yes" : person.phoneWorking ? "No" : "-"}</TableCell>
                         <TableCell className="text-center">{formatCurrency(person.salary)}</TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex justify-center gap-2">
-                            <Button variant="outline" size="sm" onClick={() => handleEditPerson(person)}>
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger>
-                                <Button variant="outline" size="sm">
-                                  <Trash2 className="w-4 h-4" />
-                              </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This action cannot be undone. This will permanently delete ID: {person.id} from our servers.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction className="bg-red-600" onClick={() => handleDeletePerson(person.id)}>Yes, delete</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </TableCell>
                       </TableRow>
                     ))
                   )}
