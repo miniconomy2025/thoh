@@ -36,11 +36,11 @@ jobs:
 
           echo \"--- Writing .env file ---\"
           cat <<ENVEOF > \"\$APP_DIR/.env\"
-          DB_HOST=${{ vars.POSTGRES_HOST }}
-          DB_PORT=${{ vars.POSTGRES_PORT }}
-          DB_NAME=${{ vars.POSTGRES_DB }}
-          DB_USER=${{ vars.POSTGRES_USER }}
-          DB_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_HOST=${{ vars.POSTGRES_HOST }}
+          POSTGRES_PORT=${{ vars.POSTGRES_PORT }}
+          POSTGRES_DB=${{ vars.POSTGRES_DB }}
+          POSTGRES_USER=${{ vars.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
           MACHINE_FAILURE_URLS=${{ secrets.MACHINE_FAILURE_URLS }}
           TRUCK_FAILURE_URLS=${{ secrets.TRUCK_FAILURE_URLS }}
           BANK_RATE_UPDATE_URL=${{ secrets.BANK_RATE_UPDATE_URL }}
