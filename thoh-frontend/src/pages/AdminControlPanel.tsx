@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { ModeToggle } from "../components/mode-toggle"
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
@@ -12,12 +12,14 @@ import { isApiError, manageLoading } from "../lib/utils"
 import simulationService from "../services/simulation.service"
 
 type AdminControlPanelLoadingState = {
+  getSimulation: boolean;
   startSimulation: boolean;
   stopSimulation: boolean;
   systemStatus: boolean;
 }
 
 type AdminControlPanelErrorState = {
+  getSimulation: string | undefined;
   startSimulation: string | undefined;
   stopSimulation: string | undefined;
   systemStatus: string | undefined;
@@ -33,17 +35,23 @@ export function AdminControlPanel() {
     startSimulation: false,
     stopSimulation: false,
     systemStatus: false,
+    getSimulation: false,
   })
   const [errorState, setErrorState] = useState<AdminControlPanelErrorState>({
     startSimulation: undefined,
     stopSimulation: undefined,
     systemStatus: undefined,
-    syncedSimulationTime: undefined
+    syncedSimulationTime: undefined,
+    getSimulation: undefined
   })
 
   useInterval(() => {
-    setCurrentDate(() => new Date(currentDate.getTime() + 1000))
-  }, 1000)
+    if (!isRunning || !simulation) {
+      // do nothing
+    }else {
+      setCurrentDate(() => new Date(currentDate.getTime() + CONSTANTS.SIMULATION_SECOND_IN_MS / 10));
+    }
+  }, 100)
 
   useInterval(() => {
     if (!isRunning || !simulation) {
@@ -118,6 +126,28 @@ export function AdminControlPanel() {
       .replace(/GMT.*$/, "")
       .trim()
   }
+
+  useEffect(() => {
+    manageLoading<AdminControlPanelLoadingState>(
+      ['getSimulation', 'systemStatus'], 
+      setLoadingState,
+      async () => {
+        const existingSimulation = await simulationService.getSimulation();
+
+        if (isApiError(existingSimulation)) {
+          setErrorState((prev) => ({ ...prev, getSimulation: existingSimulation.error }));
+          setIsRunning(false);
+          setSimulation(null);
+          return;
+        } else {
+          setErrorState((prev) => ({ ...prev, getSimulation: undefined }));
+          setSimulation(existingSimulation);
+          setIsRunning(true);
+          handleSyncedSimulationTime(existingSimulation);
+        }
+      }
+    );
+  }, [])
 
   return (
     <>
