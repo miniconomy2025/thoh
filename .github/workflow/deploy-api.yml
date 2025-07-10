@@ -1,0 +1,114 @@
+name: Deploy Express App to EC2
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Copy files to EC2 with scp
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ vars.EC2_HOST }}
+          username: ${{ vars.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          source: "./api/"
+          target: "/home/${{ vars.EC2_USER }}/thoh"
+          rm: false
+
+      - name: Run remote commands on EC2 to set up and start Express app
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ vars.EC2_HOST }}
+          username: ${{ vars.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script: |
+            set -e
+            APP_DIR="/home/${{ vars.EC2_USER }}/thoh"
+            SERVICE_NAME="thoh"
+            ENTRY_FILE="dist/main.ts" 
+
+            echo "--- Installing Node.js (v18 LTS) ---"
+            curl -fsSL https://rpm.nodesource.com/setup_18.x | sudo bash -
+            sudo yum install -y nodejs
+
+            echo "--- Moving to $APP_DIR and installing dependencies ---"
+            cd $APP_DIR
+            npm install --production
+
+            echo "--- Writing .env file ---"
+            cat <<EOF > "$APP_DIR/.env"
+            DB_HOST=${{ vars.DB_HOST }}
+            DB_PORT=${{ vars.DB_PORT }}
+            DB_NAME=${{ vars.DB_NAME }}
+            DB_USER=${{ vars.DB_USER }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            APPLICATION_NAME=${{ vars.APPLICATION_NAME }}
+            REST_BASE_PATH=${{ vars.REST_BASE_PATH }}
+            API_BASEURL=${{ vars.EC2_HOST }}${{ vars.REST_BASE_PATH }}
+            EOF
+
+            chmod 600 "$APP_DIR/.env"
+
+            echo "--- Creating systemd service ---"
+            sudo bash -c "cat > /etc/systemd/system/$SERVICE_NAME.service" <<EOF
+            [Unit]
+            Description=thoh Express App
+            After=network.target
+
+            [Service]
+            EnvironmentFile=$APP_DIR/.env
+            WorkingDirectory=$APP_DIR
+            ExecStart=/usr/bin/node $APP_DIR/$ENTRY_FILE
+            Restart=always
+            User=${{ vars.EC2_USER }}
+            Group=${{ vars.EC2_USER }}
+
+            [Install]
+            WantedBy=multi-user.target
+            EOF
+
+            echo "--- Reloading systemd and starting service ---"
+            sudo systemctl daemon-reload
+            sudo systemctl enable $SERVICE_NAME
+            sudo systemctl restart $SERVICE_NAME
+
+            echo "--- Installing and configuring NGINX ---"
+            sudo yum install -y nginx
+            sudo systemctl enable nginx
+
+            NGINX_CONF="/etc/nginx/conf.d/thoh.conf"
+            sudo bash -c "cat > $NGINX_CONF" <<EOF
+            server {
+              listen 443 ssl;
+              server_name ${{ vars.EC2_HOST }};
+              ssl_certificate     ${{ secrets.SERVER_CERT }};;
+              ssl_certificate_key ${{ secrets.SERVER_KEY }};
+              ssl_protocols       TLSv1.3;
+              ssl_ciphers         HIGH:!aNULL:!MD5;
+              ssl_verify_client      on;
+
+              location / {
+                proxy_pass http://localhost:3000;
+                proxy_http_version 1.1;
+                proxy_set_header Upgrade \$http_upgrade;
+                proxy_set_header Connection 'upgrade';
+                proxy_set_header Host \$host;
+                proxy_cache_bypass \$http_upgrade;
+                if ($ssl_client_verify != SUCCESS) {
+                    return 403;
+                }
+              }
+            }
+            EOF
+
+            echo "Testing and restarting NGINX..."
+            sudo nginx -t && sudo systemctl restart nginx
+
+            echo "✅ Express app deployed and running behind NGINX."
