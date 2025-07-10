@@ -89,6 +89,7 @@ jobs:
             SERVER_KEY_PATH="$CERT_DIR/server.key"
             CA_CERT_PATH="$CERT_DIR/ca.crt"
             NGINX_CONF="/etc/nginx/conf.d/thoh.conf"
+            DOMAIN="thoh-api.projects.bbdgrad.com"
             
             # Replace these with actual secret values injected by GitHub Actions
             SERVER_CERT="${{ secrets.SERVER_CERT }}"
