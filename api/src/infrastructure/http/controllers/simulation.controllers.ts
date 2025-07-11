@@ -444,7 +444,7 @@ export class SimulationController {
          *       404:
          *         description: Raw materials market not found
          */
-        router.get('/materials', async (req, res) => {
+        router.get('/raw-materials', async (req, res) => {
             if (!this.validateSimulationRunning(res)) return;
             
             try {
