@@ -25,13 +25,13 @@ export class HandlePeriodicFailuresUseCase {
 
     async execute(simulation: Simulation): Promise<void> {
         // Check if it's time for weekly failures (every 7 days)
-        if (simulation.currentDay % 1 === 0) {
+        if (simulation.currentDay % 14 === 0) {
             await this.handleMachineFailures(simulation);
             await this.handleTruckFailures(simulation);
         }
 
         // Check if it's time for bank rate update (every 30 days)
-        if (simulation.currentDay % 1 === 0) {
+        if (simulation.currentDay % 30 === 0) {
             await this.handleBankRateUpdate(simulation);
         }
     }
