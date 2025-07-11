@@ -158,6 +158,7 @@ export class StartSimulationUseCase {
                     machineNameToId.get(machineConfig.type)!,
                     cost,
                     weight,
+                    materialRatioObj,
                     machineConfig.productionRate,
                     1, // quantity
                     machineId++,
