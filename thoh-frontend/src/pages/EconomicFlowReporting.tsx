@@ -36,7 +36,7 @@ export function EconomicFlowReporting() {
   const [rawMaterialsData, setRawMaterialsData] = useState<Chart[]>([])
   const [activities, setActivities] = useState<ActivityItem[]>([])
 
-  const [entities, setEntities] = useState<Entity[]>([
+  const [entities] = useState<Entity[]>([
     { id: "1", type: "Supplier", name: "Global Materials Ltd", accountValue: "450000" },
     { id: "2", type: "Logistics", name: "FastTrans Corp", accountValue: "125000" },
     { id: "3", type: "Retail Bank", name: "RetailBank1", accountValue: "890000" },
