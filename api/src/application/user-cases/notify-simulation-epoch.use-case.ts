@@ -13,9 +13,9 @@ export class NotifySimulationEpochUseCase {
 
             const agent = new Agent({
                 connect: {
-                    cert: fs.readFileSync('./thoh-client.crt'),
-                    key: fs.readFileSync('./thoh-client.key'),
-                    ca: fs.readFileSync('./root-ca.crt'),
+                    cert: fs.readFileSync('/thoh-client.crt'),
+                    key: fs.readFileSync('/thoh-client.key'),
+                    ca: fs.readFileSync('/root-ca.crt'),
                 }
             });
             
