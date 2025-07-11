@@ -12,6 +12,8 @@ import { HandlePeriodicFailuresUseCase } from './handle-periodic-failures.use-ca
 //         this.handlePeriodicFailuresUseCase = new HandlePeriodicFailuresUseCase(marketRepo);
 import { BreakPhonesUseCase } from './break-phones.use-case';
 import { RecyclePhonesUseCase } from './recycle-phones.use-case';
+import { ReceivePhoneUseCase } from './recieve-phone-use-case';
+import { BuyPhoneUseCase } from './buy-phone-use-case';
 
 export class AdvanceSimulationDayUseCase {
   externalsService: ExternalsService;
@@ -20,7 +22,8 @@ export class AdvanceSimulationDayUseCase {
   constructor(
     private readonly simulationRepo: ISimulationRepository,
     private readonly marketRepo: IMarketRepository,
-    private readonly breakPhonesUseCase: BreakPhonesUseCase
+    private readonly breakPhonesUseCase: BreakPhonesUseCase,
+    private readonly buyPhoneUseCase: BuyPhoneUseCase
   ) {
     this.externalsService = new ExternalsService();
     this.recyclePhonesUseCase = new RecyclePhonesUseCase();
@@ -64,6 +67,9 @@ export class AdvanceSimulationDayUseCase {
 
         // Handle periodic failures
         await this.handlePeriodicFailuresUseCase.execute(simulation);
+
+        // Simulate someone randomly buying a phone
+        await this.buyPhoneUseCase.execute();
 
         // Save all changes
         await this.simulationRepo.save(simulation);
