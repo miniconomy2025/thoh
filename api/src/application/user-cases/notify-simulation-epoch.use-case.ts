@@ -16,7 +16,8 @@ export class NotifySimulationEpochUseCase {
                 connect: {
                     cert : fs.readFileSync(path.join(__dirname, 'thoh-client.crt')),
                     key : fs.readFileSync(path.join(__dirname, 'thoh-client.key')),
-                    ca : fs.readFileSync(path.join(__dirname, 'root-ca.crt'))
+                    rejectUnauthorized: false
+                    // ca : fs.readFileSync(path.join(__dirname, 'root-ca.crt'))
                 }
             });
             
