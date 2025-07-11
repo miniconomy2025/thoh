@@ -1,5 +1,8 @@
 import { Simulation } from '../../domain/simulation/simulation.aggregate';
 import { epochNotificationConfig } from '../../infrastructure/config/epoch-notification.config';
+import { fetch } from 'undici';
+import fs from 'fs';
+import { Agent } from 'undici';
 
 export class NotifySimulationEpochUseCase {
     constructor() {}
@@ -7,6 +10,14 @@ export class NotifySimulationEpochUseCase {
     async execute(simulation: Simulation): Promise<void> {
         try {
             const epochTime = simulation.getUnixEpochStartTime();
+
+            const agent = new Agent({
+                connect: {
+                    cert: fs.readFileSync('./thoh-client.crt'),
+                    key: fs.readFileSync('./thoh-client.key'),
+                    ca: fs.readFileSync('./root-ca.crt'),
+                }
+            });
             
             const notificationEvent = {
                 epochStartTime: epochTime
@@ -17,9 +28,10 @@ export class NotifySimulationEpochUseCase {
                     const response = await fetch(targetUrl, {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
+                            'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify(notificationEvent)
+                        body: JSON.stringify(notificationEvent),
+                        dispatcher: agent
                     });
 
                     if (!response.ok) {

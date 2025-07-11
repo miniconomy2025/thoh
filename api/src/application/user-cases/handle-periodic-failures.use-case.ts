@@ -5,6 +5,9 @@ import { bankRateConfig } from '../../infrastructure/config/bank-rate.config';
 import { MachineStaticRepository } from '../../infrastructure/persistence/postgres/machine-static.repository';
 import { VehicleStaticRepository } from '../../infrastructure/persistence/postgres/vehicle-static.repository';
 import { UpdateBankPrimeRateUseCase } from './update-bank-prime-rate.use-case';
+import { fetch } from 'undici';
+import fs from 'fs';
+import { Agent } from 'undici';
 
 export class HandlePeriodicFailuresUseCase {
     private readonly machineStaticRepo: MachineStaticRepository;
@@ -34,6 +37,14 @@ export class HandlePeriodicFailuresUseCase {
 
     private async handleBankRateUpdate(simulation: Simulation): Promise<void> {
         try {
+
+            const agent = new Agent({
+                connect: {
+                    cert: fs.readFileSync('./../../../thoh-client.crt'),
+                    key: fs.readFileSync('./../../../thoh-client.key'),
+                    ca: fs.readFileSync('./../../../root-ca.crt'),
+                }
+            });
             const { primeRate } = this.updateBankPrimeRateUseCase.execute();
             
             // Send to bank rate update webhook if configured
@@ -49,7 +60,8 @@ export class HandlePeriodicFailuresUseCase {
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(updateEvent)
+                    body: JSON.stringify(updateEvent),
+                    dispatcher: agent
                 });
 
                 if (!response.ok) {
