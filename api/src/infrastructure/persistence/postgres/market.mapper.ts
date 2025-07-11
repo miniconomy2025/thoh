@@ -32,7 +32,6 @@ export const MarketMapper = {
         machine_static_id: m.machineStaticId,
         cost: m.cost.amount,
         weight: m.weight.value,
-        materialRatio: typeof m.materialRatio === 'string' ? m.materialRatio : JSON.stringify(m.materialRatio),
         productionRate: m.productionRate,
         quantity: m.quantity
       })) : []
@@ -46,7 +45,6 @@ export const MarketMapper = {
         m.machine_static_id!,
         { amount: Number(m.cost), currency: 'ZAR' },
         { value: Number(m.weight), unit: 'kg' },
-        typeof m.materialRatio === 'string' ? JSON.parse(m.materialRatio) : m.materialRatio,
         m.productionRate,
         m.quantity,
         m.id

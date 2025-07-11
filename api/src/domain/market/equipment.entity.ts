@@ -15,7 +15,6 @@ export abstract class Equipment {
 }
 
 export class Machine extends Equipment {
-    public readonly materialRatio: Record<string, number>;
     public readonly productionRate: number;
     public readonly quantity: number;
     sold: boolean;
@@ -24,14 +23,12 @@ export class Machine extends Equipment {
         machineStaticId: number,
         cost: Money,
         weight: Weight,
-        materialRatio: Record<string, number>,
         productionRate: number,
         quantity: number,
         id: number,
         sold: boolean = false
     ) {
         super(machineStaticId, cost, weight, id);
-        this.materialRatio = materialRatio;
         this.productionRate = productionRate;
         this.quantity = quantity;
         this.sold = sold;
