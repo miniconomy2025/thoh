@@ -34,6 +34,8 @@ import { PhoneStatic } from '../../../domain/population/phone-static.entity';
 import { MutexWrapper } from '../../concurrency';
 import { Month, Chart, KeyValueCache } from '../../../domain/shared/value-objects';
 import { getScaledDate, calculateDaysElapsed } from '../../utils';
+import { ReceivePhoneUseCase } from '../../../application/user-cases/recieve-phone-use-case';
+import { BuyPhoneUseCase } from '../../../application/user-cases/buy-phone-use-case';
 
 export class SimulationController {
     private dailyJobInterval: NodeJS.Timeout | null = null;
@@ -69,10 +71,12 @@ export class SimulationController {
         private readonly simulationRepo: unknown,
         private readonly marketRepo: IMarketRepository,
         private readonly populationRepo: unknown,
-        private readonly breakPhonesUseCase: BreakPhonesUseCase
+        private readonly breakPhonesUseCase: BreakPhonesUseCase,
+        private readonly receivePhoneUseCase: ReceivePhoneUseCase,
+        private readonly buyPhoneUseCase: BuyPhoneUseCase
     ) {
         //this.advanceSimulationDayUseCase = new AdvanceSimulationDayUseCase(this.simulationRepo, this.marketRepo);
-        this.advanceSimulationDayUseCase = new AdvanceSimulationDayUseCase(this.simulationRepo as any, this.marketRepo, this.breakPhonesUseCase);
+        this.advanceSimulationDayUseCase = new AdvanceSimulationDayUseCase(this.simulationRepo as any, this.marketRepo, this.breakPhonesUseCase, this.buyPhoneUseCase);
         this.currencyRepo = new PgCurrencyRepository();
         this.getBankInitializationUseCase = new GetBankInitializationUseCase();
     }
@@ -118,7 +122,8 @@ export class SimulationController {
                         const advanceDayUseCase = new AdvanceSimulationDayUseCase(
                             simulation,
                             this.marketRepo,
-                            this.breakPhonesUseCase
+                            this.breakPhonesUseCase,
+                            this.buyPhoneUseCase
                         );
                         this.dailyJobInterval = setInterval(async () => {
                             if (this.simulationId) {
@@ -1164,6 +1169,65 @@ export class SimulationController {
                 res.status(500).json({ error: (err as Error).message });
             }
         });
+
+        /**
+         * @openapi
+         * /receive-phone:
+         *   post:
+         *     summary: Give a person their phone
+         *     requestBody:
+         *       required: true
+         *       content:
+         *         application/json:
+         *           schema:
+         *             type: object
+         *             required:
+         *               - accountNumber
+         *               - phoneName
+         *             properties:
+         *               accountNumber:
+         *                 type: string
+         *                 description: The account number of the person to give their phone to
+         *                 example: 123456789
+         *               phoneName:
+         *                 type: string
+         *                 description: The name of the phone to give to the person
+         *                 example: ePhone
+         *               id:
+         *                 type: string
+         *                 description: The id of the phone to give to the person
+         *                 example: 123456
+         *               description:
+         *                 type: string
+         *                 description: The description of the phone to give to the person
+         *                 example: A new phone
+         *     responses:
+         *       201:
+         *         description: Phone given
+         *       400:
+         *         description: Invalid input
+         *       500:
+         *         description: Internal server error
+         */
+        router.post('/receive-phone', async (req, res) => {
+        const { accountNumber, phoneName, id, description } = req.body;
+
+        if (typeof accountNumber !== 'string' || typeof phoneName !== 'string') {
+            return res.status(400).json({ error: 'Invalid input: accountNumber and phoneName must be strings' });
+        }
+
+        try {
+            await this.receivePhoneUseCase.execute(accountNumber, { 
+                id: id ?? Math.floor(Math.random() * 1_000_000),
+                name: phoneName,
+                description: description ?? 'New phone'
+            });
+            res.status(201).send(); // <-- was missing
+        } catch (err: unknown) {
+            res.status(500).json({ error: (err as Error).message });
+        }
+        });
+
 
         app.use('/', router);
     }
