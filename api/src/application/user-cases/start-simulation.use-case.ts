@@ -69,6 +69,12 @@ export class StartSimulationUseCase {
 
         const { rawMaterialsMarket, machinesMarket, trucksMarket } = this.createSeededMarkets(materialNameToId, machineNameToId, vehicleNameToId);
         const people = this.createSeededPopulation(1000, { amount: 1000, currency: 'ZAR' }, simulationId, phoneStatics);
+        console.log(JSON.stringify({
+            people: people,
+            rawMaterialsMarket: rawMaterialsMarket,
+            machinesMarket: machinesMarket,
+            trucksMarket: trucksMarket,
+        }));
         const accounts = people.map(person => {
             return this.createAccount(person, simulationId);
         });
