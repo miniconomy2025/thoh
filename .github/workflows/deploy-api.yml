@@ -45,6 +45,10 @@ jobs:
           TRUCK_FAILURE_URLS=${{ secrets.TRUCK_FAILURE_URLS }}
           BANK_RATE_UPDATE_URL=${{ secrets.BANK_RATE_UPDATE_URL }}
           EPOCH_NOTIFICATION_URLS=${{ secrets.EPOCH_NOTIFICATION_URLS }}
+          RETAIL_BANK_API_URL=${{ secrets.RETAIL_BANK_API_URL }}
+          PEAR_PHONE_API_URL=${{ secrets.PEAR_PHONE_API_URL }}
+          SUM_SANG_API_URL=${{ secrets.SUM_SANG_API_URL }}
+          RECYCLER_API_URL=${{ secrets.RECYCLER_API_URL }}
           APPLICATION_NAME=${{ vars.APPLICATION_NAME }}
           REST_BASE_PATH=${{ vars.REST_BASE_PATH }}
           API_BASEURL=${{ vars.EC2_HOST }}${{ vars.REST_BASE_PATH }}
