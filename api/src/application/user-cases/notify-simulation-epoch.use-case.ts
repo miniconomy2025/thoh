@@ -3,6 +3,7 @@ import { epochNotificationConfig } from '../../infrastructure/config/epoch-notif
 import { fetch } from 'undici';
 import fs from 'fs';
 import { Agent } from 'undici';
+import path from "node:path";
 
 export class NotifySimulationEpochUseCase {
     constructor() {}
@@ -13,9 +14,9 @@ export class NotifySimulationEpochUseCase {
 
             const agent = new Agent({
                 connect: {
-                    cert: fs.readFileSync('/thoh-client.crt'),
-                    key: fs.readFileSync('/thoh-client.key'),
-                    ca: fs.readFileSync('/root-ca.crt'),
+                    cert : fs.readFileSync(path.join(__dirname, 'thoh-client.crt')),
+                    key : fs.readFileSync(path.join(__dirname, 'thoh-client.key')),
+                    ca : fs.readFileSync(path.join(__dirname, 'root-ca.crt'))
                 }
             });
             
