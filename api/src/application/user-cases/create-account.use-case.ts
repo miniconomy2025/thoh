@@ -21,7 +21,10 @@ export class CreateAccountUseCase {
         }
       });
 
-      const body = { salary: Math.floor(this.person.salary * 100)};
+      const body = { salaryCents: Math.floor(this.person.salary * 100)};
+      console.log(JSON.stringify({
+        body: body
+      }));
       const createAccountResponse = await fetch(process.env.RETAIL_BANK_API_URL + '/accounts', {
         method: 'POST',
         headers: {
