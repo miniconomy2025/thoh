@@ -111,10 +111,10 @@ export class SimulationController {
                 // Start daily job if not already running
                 if (!this.dailyJobInterval) {
                     const rawMaterialsMarket = await this.marketRepo.findRawMaterialsMarket();
-                    const machinesMarket = await this.marketRepo.findMachinesMarket();
+                    // const machinesMarket = await this.marketRepo.findMachinesMarket();
                     const trucksMarket = await this.marketRepo.findTrucksMarket();
                     
-                    if (simulation && rawMaterialsMarket && machinesMarket && trucksMarket) {
+                    if (simulation && rawMaterialsMarket && trucksMarket) {
                         const advanceDayUseCase = new AdvanceSimulationDayUseCase(
                             simulation,
                             this.marketRepo,
