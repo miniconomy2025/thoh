@@ -36,7 +36,7 @@ export function EconomicFlowReporting() {
   const [rawMaterialsData, setRawMaterialsData] = useState<Chart[]>([])
   const [activities, setActivities] = useState<ActivityItem[]>([])
 
-  const [entities] = useState<Entity[]>([
+  const [entities, setEntities] = useState<Entity[]>([
     { id: "1", type: "Supplier", name: "Global Materials Ltd", accountValue: "450000" },
     { id: "2", type: "Logistics", name: "FastTrans Corp", accountValue: "125000" },
     { id: "3", type: "Retail Bank", name: "RetailBank1", accountValue: "890000" },
@@ -56,41 +56,51 @@ export function EconomicFlowReporting() {
     ].find((name) => name.toLowerCase().includes(type.toLowerCase()));
   }
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout | undefined = undefined;
-    try{
-      interval = setInterval(async() => {
-        const simulationInfo = await simulationService.simulationInfo();
-        if (!isApiError(simulationInfo)) {
-          setCurrentDay(simulationInfo.daysElapsed);
-          setActivities(simulationInfo.activities);
-          setTotalTrades(simulationInfo.totalTrades);
-          setMachineryChartData(simulationInfo.machinery);
-          setTruckChartData(simulationInfo.trucks);
-          setRawMaterialsData(simulationInfo.rawMaterials);
-        } else{
-          throw new Error(simulationInfo.error);
-        }
+  async function refreshData(){
+    const existingSimulation = await simulationService.getSimulation();
 
-        //const entityInfo = await simulationService.entityInfo();
-        //if (!isApiError(entityInfo)) {
-        //  setEntities(entityInfo.map((entity) => {
-        //    return {
-        //      id: entity.id.toString(),
-        //      type: entity.name,
-        //      name: entity.name,
-        //      accountValue: entity.balance
-        //    }
-        //  }));
-        //}
-  
-      }, 5000) // Update every 5 seconds as that eqauls 1 hour in the simulation
-    } catch (error) {
-      console.error(error);
-      clearInterval(interval);
+    if (!isApiError(existingSimulation)) {
+      let interval: NodeJS.Timeout | undefined = undefined;
+      try{
+        interval = setInterval(async() => {
+          const simulationInfo = await simulationService.simulationInfo();
+          if (!isApiError(simulationInfo)) {
+            setCurrentDay(simulationInfo.daysElapsed);
+            setActivities(simulationInfo.activities);
+            setTotalTrades(simulationInfo.totalTrades);
+            setMachineryChartData(simulationInfo.machinery);
+            setTruckChartData(simulationInfo.trucks);
+            setRawMaterialsData(simulationInfo.rawMaterials);
+          } else{
+            throw new Error(simulationInfo.error);
+          }
+
+          const entityInfo = await simulationService.entityInfo();
+          if (!isApiError(entityInfo)) {
+            setEntities(entityInfo.map((entity) => {
+              return {
+                id: entity.id.toString(),
+                type: entity.name,
+                name: entity.name,
+                accountValue: entity.balance
+              }
+            }));
+          }
+    
+        }, 5000) // Update every 5 seconds as that eqauls 1 hour in the simulation
+      } catch (error) {
+        console.error(error);
+        clearInterval(interval);
+      }
+
+      return () => clearInterval(interval)
+    } else {
+      console.error(existingSimulation);
     }
+  }
 
-    return () => clearInterval(interval)
+  useEffect(() => {
+    refreshData();
   }, [])
 
   const getEntityTypeColor = (type: string) => {
