@@ -42,14 +42,14 @@ export class NotifySimulationEpochUseCase {
 
                     console.log(`Epoch notification sent to ${targetUrl}`);
                 } catch (error: unknown) {
-                    console.error(`Failed to send epoch notification to ${targetUrl}:`, (error as Error).message);
+                    console.error(`Failed to send epoch notification to ${targetUrl}:`, (error as Error));
                 }
             });
 
             await Promise.all(sendPromises);
             console.log(`Epoch notifications processed for ${epochNotificationConfig.epochNotificationUrls.length} applications`);
         } catch (error: unknown) {
-            console.error('Error handling epoch notifications:', (error as Error).message);
+            console.error('Error handling epoch notifications:', (error as Error));
         }
     }
 } 
