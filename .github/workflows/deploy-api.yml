@@ -114,6 +114,10 @@ jobs:
               ssl_protocols       TLSv1.3;
               ssl_ciphers         HIGH:!aNULL:!MD5;
               ssl_verify_client   on;
+          
+              if ($remote_addr = ${{vars.EC2_IP}}) {
+                  set $client_cert_required "off";
+              }
 
               location / {
                   proxy_pass http://localhost:3000;
