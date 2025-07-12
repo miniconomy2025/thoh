@@ -285,7 +285,7 @@ export class SimulationController {
                 if (!simulation) {
                     throw new Error('Simulation not found');
                 }
-                res.json({ unixEpochStartTime: simulation.getUnixEpochStartTime() });
+                res.json({ epochStartTime: simulation.getUnixEpochStartTime() });
             } catch (err: unknown) {
                 res.status(500).json({ error: (err as Error).message });
             }
