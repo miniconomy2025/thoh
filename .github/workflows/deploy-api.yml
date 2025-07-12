@@ -115,7 +115,7 @@ jobs:
               ssl_ciphers         HIGH:!aNULL:!MD5;
               ssl_verify_client   on;
           
-              if ($remote_addr = ${{vars.EC2_IP}}) {
+              if ($remote_addr = 13.247.96.130) {
                   set $client_cert_required "off";
               }
 
