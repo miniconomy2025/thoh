@@ -18,7 +18,6 @@ import { Population } from '../../../domain/population/population.entity';
 import { Currency } from '../../../domain/population/currency.entity';
 import { Recycle } from '../../../domain/population/recycle.entity';
 import { Simulation } from '../../../domain/simulation/simulation.entity';
-// Add other entities as needed
 
 export const pool = new Pool({
   user: process.env.POSTGRES_USER ,
@@ -26,9 +25,7 @@ export const pool = new Pool({
   database: process.env.POSTGRES_DB ,
   password: process.env.POSTGRES_PASSWORD,
   port: parseInt(process.env.POSTGRES_PORT || "5432"),
-  ssl: {
-    rejectUnauthorized: false
-  }
+
 });
 
 export const AppDataSource = new DataSource({
@@ -38,11 +35,11 @@ export const AppDataSource = new DataSource({
   username: process.env.POSTGRES_USER,
   password: process.env.POSTGRES_PASSWORD,
   database: process.env.POSTGRES_DB,
-  synchronize: false, // Use migrations
+  synchronize: false,
   logging: true,
   entities: [
     Person, Phone, PhoneStatic, MaterialStatic, Machine, MachineStatic, MachineMaterialRatio, Equipment, Truck, VehicleStatic, RawMaterial, Order, Collection, Population, Currency, Recycle, Simulation
-  ], // Add all entities here
+  ], 
   migrations: ['src/infrastructure/persistence/postgres/migrations/*.ts'],
   subscribers: [],
 }); 

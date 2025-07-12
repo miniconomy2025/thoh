@@ -1,6 +1,6 @@
 import { IPopulationRepository } from '../../../application/ports/repository.ports';
 import { Population as PopulationEntity } from '../../../domain/population/population.entity';
-import { AppDataSource } from '../../../domain/population/data-source';
+import { AppDataSource } from '../../../domain/shared/data-source';
 
 export class PgPopulationRepository implements IPopulationRepository {
   private repo = AppDataSource.getRepository(PopulationEntity);
