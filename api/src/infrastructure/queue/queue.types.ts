@@ -1,14 +1,17 @@
-export enum QueueType {
-    CRITICAL = 'critical',
-    BUSINESS = 'business',
-    NOTIFICATION = 'notification'
-}
+export type QueueType = 'critical' | 'business' | 'notification';
+
+export const QueueType = {
+    CRITICAL: 'critical' as QueueType,
+    BUSINESS: 'business' as QueueType,
+    NOTIFICATION: 'notification' as QueueType
+};
 
 export interface CriticalQueueMessage {
     type: 'account_creation' | 'bank_rate_update';
     payload: {
         accountNumber?: string;
         salaryCents?: number;
+        personId?: number;
         primeRate?: number;
         simulationDate?: string;
         simulationTime?: string;
@@ -22,7 +25,6 @@ export interface BusinessQueueMessage {
         phoneName?: string;
         quantity?: number;
         recycleQuantity?: number;
-        modelId?: string;
     };
 }
 

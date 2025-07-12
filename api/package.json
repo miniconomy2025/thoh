@@ -10,18 +10,19 @@
     "migration:generate": "npm run typeorm -- migration:generate src/infrastructure/persistence/postgres/migrations/third --dataSource src/domain/market/data-source.ts",
     "migration:run": "npm run typeorm -- migration:run --dataSource src/domain/market/data-source.ts",
     "migration:revert": "npm run typeorm -- migration:revert",
-    "seed": "ts-node src/domain/market/seed.ts"
+    "seed": "ts-node src/domain/market/seed.ts",
+    "test:queue": "ts-node src/test/queue-test.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@aws-sdk/client-sqs": "^3.0.0",
+    "@aws-sdk/client-sqs": "^3.844.0",
     "@prisma/client": "^6.11.0",
+    "async-mutex": "^0.5.0",
     "axios": "^1.10.0",
     "cors": "^2.8.5",
-    "async-mutex": "^0.5.0",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",
     "pg": "^8.16.3",
@@ -30,9 +31,8 @@
     "swagger-ui-express": "^5.0.1",
     "tsconfig-paths": "^4.2.0",
     "typeorm": "^0.3.25",
-    "zod": "^4.0.2",
-    "undici": "^7.11.0"
-
+    "undici": "^7.11.0",
+    "zod": "^4.0.2"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

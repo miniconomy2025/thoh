@@ -4,19 +4,23 @@ import { IQueueService } from './queue.interface';
 
 export class QueueFactory {
     private static instances: Map<QueueType, IQueueService> = new Map();
-    private static region = process.env.AWS_REGION || 'af-south-1';
+    private static region = process.env.AWS_REGION;
 
-    private static queueUrls: Record<QueueType, string> = {
-        [QueueType.CRITICAL]: process.env.AWS_SQS_CRITICAL_QUEUE_URL || '',
-        [QueueType.BUSINESS]: process.env.AWS_SQS_BUSINESS_QUEUE_URL || '',
-        [QueueType.NOTIFICATION]: process.env.AWS_SQS_NOTIFICATION_QUEUE_URL || ''
-    };
+    private static queueUrls = {
+        critical: process.env.AWS_SQS_CRITICAL_QUEUE_URL,
+        business: process.env.AWS_SQS_BUSINESS_QUEUE_URL,
+        notification: process.env.AWS_SQS_NOTIFICATION_QUEUE_URL
+    } as const;
 
     static getQueue(type: QueueType): IQueueService {
+        if (!this.region) {
+            throw new Error('AWS_REGION environment variable is not set');
+        }
+
         if (!this.instances.has(type)) {
             const queueUrl = this.queueUrls[type];
             if (!queueUrl) {
-                throw new Error(`Queue URL not configured for type: ${type}`);
+                throw new Error(`Queue URL not configured for type: ${type}. Please set AWS_SQS_${type.toUpperCase()}_QUEUE_URL`);
             }
             this.instances.set(type, new AWSSQSService(this.region, queueUrl));
         }

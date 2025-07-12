@@ -1,8 +1,5 @@
 import { Person } from "../../domain/population/person.entity";
-import {Agent} from "undici";
-import fs from "fs";
-import path from "node:path";
-import { fetch } from 'undici';
+import { QueueFactory } from "../../infrastructure/queue/queue.factory";
 
 export class CreateAccountUseCase {
   private person: Person;
@@ -12,34 +9,27 @@ export class CreateAccountUseCase {
 
   async execute(): Promise<void> {
     if (!this.person.accountNumber) {
-
-      const agent = new Agent({
-        connect: {
-          cert : fs.readFileSync(path.join(__dirname, 'thoh-client.crt')),
-          key : fs.readFileSync(path.join(__dirname, 'thoh-client.key')),
-          rejectUnauthorized: false
+      const criticalQueue = QueueFactory.getCriticalQueue();
+      
+      // Queue the account creation request
+      await criticalQueue.sendMessage({
+        body: {
+          type: 'account_creation',
+          payload: {
+            salaryCents: Math.floor(this.person.salary * 100),
+            personId: this.person.id // Include person ID for response handling
+          }
         }
       });
 
-      const body = { salaryCents: Math.floor(this.person.salary * 100)};
-      console.log(JSON.stringify({
-        body: body
-      }));
-      const createAccountResponse = await fetch(process.env.RETAIL_BANK_API_URL + '/accounts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(body),
-        dispatcher: agent,
-      });
-
-      const account = await createAccountResponse.body;
-      // @ts-ignore
-      this.person.accountNumber = account.accountId;
+      console.log(`Account creation queued for person ${this.person.id}`);
+      // Note: The account number will be set by the queue consumer when it processes
+      // the response from the bank API. The consumer will:
+      // 1. Call the bank API to create the account
+      // 2. Get the account number from the response
+      // 3. Update the person record with the account number using PersonRepository
     } else {
       // person already has an account, no need to create another one
     }
   }
-
 }

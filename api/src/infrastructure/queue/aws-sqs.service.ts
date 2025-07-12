@@ -14,6 +14,7 @@ export class AWSSQSService implements IQueueService {
         const command = new SendMessageCommand({
             QueueUrl: this.queueUrl,
             MessageBody: JSON.stringify(message.body),
+            MessageGroupId: message.messageGroupId, // Add MessageGroupId for FIFO queues
             MessageAttributes: message.attributes ? this.convertAttributes(message.attributes) : undefined
         });
 
@@ -24,6 +25,7 @@ export class AWSSQSService implements IQueueService {
         const entries = messages.map((msg, index) => ({
             Id: `${index}`,
             MessageBody: JSON.stringify(msg.body),
+            MessageGroupId: msg.messageGroupId, // Add MessageGroupId for FIFO queues
             MessageAttributes: msg.attributes ? this.convertAttributes(msg.attributes) : undefined
         }));
 

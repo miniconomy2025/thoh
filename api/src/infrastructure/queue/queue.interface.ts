@@ -1,13 +1,12 @@
 export interface QueueMessage {
     id?: string;
     body: any;
-    attributes?: Record<string, string>;
+    messageGroupId?: string; // Required for FIFO queues
+    attributes?: Record<string, string>; // Message attributes for metadata
 }
 
 export interface IQueueService {
     sendMessage(message: QueueMessage): Promise<void>;
-    sendBatchMessages(messages: QueueMessage[]): Promise<void>;
-    receiveMessages(maxMessages?: number): Promise<QueueMessage[]>;
+    receiveMessages(maxMessages: number): Promise<QueueMessage[]>;
     deleteMessage(messageId: string): Promise<void>;
-    deleteBatchMessages(messageIds: string[]): Promise<void>;
 } 
