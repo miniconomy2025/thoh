@@ -1,9 +1,12 @@
 import { Person } from "../../domain/population/person.entity";
 import { PersonRepository } from "../../infrastructure/persistence/postgres/person.repository";
+import { IPopulationRepository } from "../ports/repository.ports";
 
 export class BuyPhoneUseCase {
   private readonly pearModels = ['ePhone', 'ePhone_plus', 'ePhone_pro_max'];
   private readonly sumSangModels = ['Cosmos_Z25', 'Cosmos_Z25_ultra', 'Cosmos_Z25_FE'];
+
+  constructor(private readonly populationRepo: IPopulationRepository) {}
 
   async execute(): Promise<void> {
     const people = await PersonRepository.getRepo().find({ relations: ['phone', 'phone.model'] });

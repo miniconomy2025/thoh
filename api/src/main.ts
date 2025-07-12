@@ -30,6 +30,8 @@ import { AppDataSource as PopulationDataSource } from './domain/population/data-
 import { AppDataSource as MarketDataSource } from './domain/market/data-source';
 import { BreakPhonesUseCase } from './application/user-cases/break-phones.use-case';
 import dotenv from 'dotenv';
+import { ReceivePhoneUseCase } from './application/user-cases/recieve-phone-use-case';
+import { BuyPhoneUseCase } from './application/user-cases/buy-phone-use-case';
 
 dotenv.config();
 
@@ -78,6 +80,8 @@ async function initializeApp() {
     const getCollectionsUseCase = new GetCollectionsUseCase(marketRepo);
     const collectItemUseCase = new CollectItemUseCase(marketRepo);
     const breakPhonesUseCase = new BreakPhonesUseCase(populationRepo);
+    const receivePhoneUseCase = new ReceivePhoneUseCase(populationRepo);
+    const buyPhoneUseCase = new BuyPhoneUseCase(populationRepo);
 
     // Instantiate the Primary Adapter (the API Controller)
     const simulationController = new SimulationController(
@@ -100,7 +104,9 @@ async function initializeApp() {
         simulationRepo,
         marketRepo,
         populationRepo,
-        breakPhonesUseCase
+        breakPhonesUseCase,
+        receivePhoneUseCase,
+        buyPhoneUseCase,
     );
 
     const app = express();

@@ -1,7 +1,9 @@
 import { PhoneStatic } from "../../domain/population/phone-static.entity";
 import { PersonRepository } from "../../infrastructure/persistence/postgres/person.repository";
+import { IPopulationRepository } from "../ports/repository.ports";
 
 export class ReceivePhoneUseCase {
+  constructor(private readonly populationRepo: IPopulationRepository) {}
   async execute(accountNumber: string, model: PhoneStatic): Promise<void> {
     const repo = PersonRepository.getRepo();
     const person = await repo.findOne({
