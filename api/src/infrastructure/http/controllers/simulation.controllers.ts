@@ -1830,6 +1830,12 @@ export class SimulationController {
         router.get('/simulation-info', async (req, res) => {
             try {
                 if (!this.validateSimulationRunning(res)) return;
+
+                const response = await fetch(`${process.env.COMMERCIAL_BANK_ACCOUNTS_URL}`);
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch bank account data');
+                }
                 
                 res.status(200).json({
                     message: 'Successfully retrieved simulation information',
@@ -1839,6 +1845,7 @@ export class SimulationController {
                     machinery: (await this.machinery.read(async (val) => val)).getOrderedValues(),
                     trucks: (await this.trucks.read(async (val) => val)).getOrderedValues(),
                     rawMaterials: (await this.rawMaterials.read(async (val) => val)).getOrderedValues(),
+                    entities: response.json()
                 });
             } catch (err: unknown) {
                 res.status(500).json({ error: (err as Error).message });

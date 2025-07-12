@@ -35,15 +35,8 @@ export function EconomicFlowReporting() {
   const [truckChartData, setTruckChartData] = useState<Chart[]>([])
   const [rawMaterialsData, setRawMaterialsData] = useState<Chart[]>([])
   const [activities, setActivities] = useState<ActivityItem[]>([])
+  const [entities, setEntities] = useState<Entity[]>([]);
 
-  const [entities] = useState<Entity[]>([
-    { id: "1", type: "Supplier", name: "Global Materials Ltd", accountValue: "450000" },
-    { id: "2", type: "Logistics", name: "FastTrans Corp", accountValue: "125000" },
-    { id: "3", type: "Retail Bank", name: "RetailBank1", accountValue: "890000" },
-    { id: "4", type: "Commercial Bank", name: "CommercialBank Pro", accountValue: "1200000" },
-    { id: "5", type: "Phone Companies", name: "TechPhone Inc", accountValue: "340000" },
-    { id: "6", type: "Recycler", name: "EcoRecycle Solutions", accountValue: "85000" },
-  ])
 
   function getEntityName(type: string): string | undefined {
     return [
@@ -57,41 +50,53 @@ export function EconomicFlowReporting() {
   }
 
   useEffect(() => {
-    let interval: NodeJS.Timeout | undefined = undefined;
-    try{
-      interval = setInterval(async() => {
-        const simulationInfo = await simulationService.simulationInfo();
-        if (!isApiError(simulationInfo)) {
-          setCurrentDay(simulationInfo.daysElapsed);
-          setActivities(simulationInfo.activities);
-          setTotalTrades(simulationInfo.totalTrades);
-          setMachineryChartData(simulationInfo.machinery);
-          setTruckChartData(simulationInfo.trucks);
-          setRawMaterialsData(simulationInfo.rawMaterials);
-        } else{
-          throw new Error(simulationInfo.error);
-        }
+  let cancelled = false;
+  let timeoutId: NodeJS.Timeout;
 
-        //const entityInfo = await simulationService.entityInfo();
-        //if (!isApiError(entityInfo)) {
-        //  setEntities(entityInfo.map((entity) => {
-        //    return {
-        //      id: entity.id.toString(),
-        //      type: entity.name,
-        //      name: entity.name,
-        //      accountValue: entity.balance
-        //    }
-        //  }));
-        //}
-  
-      }, 5000) // Update every 5 seconds as that eqauls 1 hour in the simulation
-    } catch (error) {
-      console.error(error);
-      clearInterval(interval);
+  const poll = async () => {
+    const existingSimulation = await simulationService.getSimulation();
+    if (isApiError(existingSimulation)) {
+      console.error(existingSimulation.error);
+      return;
     }
 
-    return () => clearInterval(interval)
-  }, [])
+    const tick = async () => {
+      const simulationInfo = await simulationService.simulationInfo();
+      if (isApiError(simulationInfo)) {
+        console.error(simulationInfo.error);
+        return;
+      }
+
+      if (cancelled) return;
+
+      setCurrentDay(simulationInfo.daysElapsed);
+      setActivities(simulationInfo.activities);
+      setTotalTrades(simulationInfo.totalTrades);
+      setMachineryChartData(simulationInfo.machinery);
+      setTruckChartData(simulationInfo.trucks);
+      setRawMaterialsData(simulationInfo.rawMaterials);
+      setEntities(simulationInfo.entities.map((entity) => ({
+        id: entity.id.toString(),
+        type: entity.name,
+        name: entity.name,
+        accountValue: entity.balance,
+      })));
+
+      // schedule next tick
+      timeoutId = setTimeout(tick, 5000); // every 5 seconds, 1 hour passes in simulation
+    };
+
+    tick();
+  };
+
+  poll();
+
+  return () => {
+    cancelled = true;
+    clearTimeout(timeoutId);
+  };
+}, []);
+
 
   const getEntityTypeColor = (type: string) => {
     const colors: { [key: string]: string } = {

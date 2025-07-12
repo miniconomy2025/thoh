@@ -49,6 +49,8 @@ jobs:
           PEAR_PHONE_API_URL=${{ secrets.PEAR_PHONE_API_URL }}
           SUM_SANG_API_URL=${{ secrets.SUM_SANG_API_URL }}
           RECYCLER_API_URL=${{ secrets.RECYCLER_API_URL }}
+          END_SIMULATION_URLS=${{ secrets.END_SIMULATION_URLS }}
+          COMMERCIAL_BANK_ACCOUNTS_URL=${{ secrets.COMMERCIAL_BANK_ACCOUNTS_URL }}
           APPLICATION_NAME=${{ vars.APPLICATION_NAME }}
           REST_BASE_PATH=${{ vars.REST_BASE_PATH }}
           API_BASEURL=${{ vars.EC2_HOST }}${{ vars.REST_BASE_PATH }}
