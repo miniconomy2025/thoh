@@ -31,6 +31,7 @@ import dotenv from 'dotenv';
 import { ReceivePhoneUseCase } from './application/user-cases/recieve-phone-use-case';
 import { BuyPhoneUseCase } from './application/user-cases/buy-phone-use-case';
 import { AppDataSource } from './domain/shared/data-source';
+import { swaggerOptions } from './swagger-options';
 
 dotenv.config();
 
@@ -103,17 +104,6 @@ async function initializeApp() {
     app.use(cors());
     app.use(express.json());
 
-    const swaggerOptions = {
-        definition: {
-            openapi: '3.0.0',
-            info: {
-                title: 'THoH Simulation API',
-                version: '1.0.0',
-                description: 'API documentation for the THoH simulation backend',
-            },
-        },
-        apis: ['./src/infrastructure/http/controllers/*.ts', './src/infrastructure/http/routes.ts'],
-    };
     const swaggerSpec = swaggerJsdoc(swaggerOptions);
     app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
     app.get('/swagger.json', (req, res) => {
