@@ -1,34 +1,34 @@
 import express, { Request, Response } from 'express';
-import { StartSimulationUseCase } from "../../../application/user-cases/start-simulation.use-case";
-import { GetPeopleStateUseCase } from '../../../application/user-cases/get-people-state.use-case';
-import { AdvanceSimulationDayUseCase } from '../../../application/user-cases/advance-simulation-day.use-case';
-import { GetMachinesUseCase } from '../../../application/user-cases/get-machines.use-case';
-import { GetTrucksUseCase } from '../../../application/user-cases/get-trucks.use-case';
-import { GetRawMaterialsUseCase } from '../../../application/user-cases/get-raw-materials.use-case';
-import { PurchaseMachineUseCase } from '../../../application/user-cases/purchase-machine.use-case';
-import { PurchaseTruckUseCase } from '../../../application/user-cases/purchase-truck.use-case';
-import { PurchaseRawMaterialUseCase } from '../../../application/user-cases/purchase-raw-material.use-case';
-import { GetOrdersUseCase } from '../../../application/user-cases/get-orders.use-case';
-import { PayOrderUseCase } from '../../../application/user-cases/pay-order.use-case';
-import { GetCollectionsUseCase } from '../../../application/user-cases/get-collections.use-case';
-import {  SIM_DAY_INTERVAL_MS } from '../../scheduling/daily-tasks.job';
-import { CollectItemInput, CollectItemUseCase, LogisticsInput } from '../../../application/user-cases/collect-item.use-case';
 import { IMarketRepository } from '../../../application/ports/repository.ports';
-import { PgCurrencyRepository } from '../../persistence/postgres/currency.repository';
-import { StopSimulationUseCase } from '../../../application/user-cases/stop-simulation.use-case';
-import { GetBankInitializationUseCase } from '../../../application/user-cases/get-bank-initialization.use-case';
-import { RecyclePhonesUseCase } from '../../../application/user-cases/recycle-phones.use-case';
+import { AdvanceSimulationDayUseCase } from '../../../application/user-cases/advance-simulation-day.use-case';
 import { BreakPhonesUseCase } from '../../../application/user-cases/break-phones.use-case';
-import { PersonRepository } from '../../persistence/postgres/person.repository';
-import { PhoneRepository } from '../../persistence/postgres/phone.repository';
-import { PhoneStaticRepository } from '../../persistence/postgres/phone-static.repository';
+import { CollectItemInput, CollectItemUseCase, LogisticsInput } from '../../../application/user-cases/collect-item.use-case';
+import { GetBankInitializationUseCase } from '../../../application/user-cases/get-bank-initialization.use-case';
+import { GetCollectionsUseCase } from '../../../application/user-cases/get-collections.use-case';
+import { GetMachinesUseCase } from '../../../application/user-cases/get-machines.use-case';
+import { GetOrdersUseCase } from '../../../application/user-cases/get-orders.use-case';
+import { GetPeopleStateUseCase } from '../../../application/user-cases/get-people-state.use-case';
+import { GetRawMaterialsUseCase } from '../../../application/user-cases/get-raw-materials.use-case';
+import { GetTrucksUseCase } from '../../../application/user-cases/get-trucks.use-case';
+import { PayOrderUseCase } from '../../../application/user-cases/pay-order.use-case';
+import { PurchaseMachineUseCase } from '../../../application/user-cases/purchase-machine.use-case';
+import { PurchaseRawMaterialUseCase } from '../../../application/user-cases/purchase-raw-material.use-case';
+import { PurchaseTruckUseCase } from '../../../application/user-cases/purchase-truck.use-case';
+import { RecyclePhonesUseCase } from '../../../application/user-cases/recycle-phones.use-case';
+import { StartSimulationUseCase } from "../../../application/user-cases/start-simulation.use-case";
+import { StopSimulationUseCase } from '../../../application/user-cases/stop-simulation.use-case';
 import { Phone } from '../../../domain/population/phone.entity';
+import { PgCurrencyRepository } from '../../persistence/postgres/currency.repository';
+import { PersonRepository } from '../../persistence/postgres/person.repository';
+import { PhoneStaticRepository } from '../../persistence/postgres/phone-static.repository';
+import { PhoneRepository } from '../../persistence/postgres/phone.repository';
+import { SIM_DAY_INTERVAL_MS } from '../../scheduling/daily-tasks.job';
 
-import { MutexWrapper } from '../../concurrency';
-import { Month, Chart, KeyValueCache } from '../../../domain/shared/value-objects';
-import { getScaledDate, calculateDaysElapsed } from '../../utils';
-import { ReceivePhoneUseCase } from '../../../application/user-cases/recieve-phone-use-case';
 import { BuyPhoneUseCase } from '../../../application/user-cases/buy-phone-use-case';
+import { ReceivePhoneUseCase } from '../../../application/user-cases/recieve-phone-use-case';
+import { Chart, KeyValueCache, Month } from '../../../domain/shared/value-objects';
+import { MutexWrapper } from '../../concurrency';
+import { calculateDaysElapsed, getScaledDate } from '../../utils';
 
 export class SimulationController {
     private dailyJobInterval: NodeJS.Timeout | null = null;
@@ -108,13 +108,35 @@ export class SimulationController {
          * /simulations:
          *   post:
          *     summary: Start a new simulation
+         *     tags:
+         *       - Private Endpoints
          *     responses:
          *       201:
          *         description: Simulation started successfully
-         *       400:
-         *         description: Missing required fields
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 message:
+         *                   type: string
+         *                   example: Simulation started successfully and daily job started. Generated simulationId 1
+         *                 simulationId:
+         *                   type: integer
+         *                   example: 1
          *       500:
          *         description: Failed to start simulation
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: Failed to start simulation.
+         *                 details:
+         *                   type: string
+         *                   example: Some error message
          */
         router.post('/simulations', async (req: Request, res: Response) => {
             try {
@@ -159,11 +181,32 @@ export class SimulationController {
          * /simulations:
          *   get:
          *     summary: Get the current simulation ID
+         *     tags:
+         *       - Simulations
          *     responses:
          *       200:
          *         description: Current simulation ID
-         *       400:
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 message:
+         *                   type: string
+         *                   example: Simulation is running. Current simulationId 1
+         *                 simulationId:
+         *                   type: integer
+         *                   example: 1
+         *       404:
          *         description: Simulation not running
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: Simulation is not running. Please start a simulation first using POST /simulations
          */
         router.get('/simulations', async (req, res) => {
             if (!this.simulationId) {
@@ -178,11 +221,60 @@ export class SimulationController {
          * /people:
          *   get:
          *     summary: Get people and their salaries
+         *     tags:
+         *       - Private Endpoints
          *     responses:
          *       200:
          *         description: People state
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 people:
+         *                   type: array
+         *                   items:
+         *                     type: object
+         *                     properties:
+         *                       id:
+         *                         type: integer
+         *                         example: 1
+         *                       salary:
+         *                         type: number
+         *                         example: 50000
+         *                       phone:
+         *                         type: object
+         *                         nullable: true
+         *                         properties:
+         *                           id:
+         *                             type: integer
+         *                             example: 10
+         *                           isBroken:
+         *                             type: boolean
+         *                             example: false
+         *                           model:
+         *                             type: object
+         *                             nullable: true
+         *                             properties:
+         *                               id:
+         *                                 type: integer
+         *                                 example: 2
+         *                               name:
+         *                                 type: string
+         *                                 example: ePhone
+         *                       phoneWorking:
+         *                         type: boolean
+         *                         example: true
          *       500:
          *         description: Error
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: An error occurred while retrieving people state
          */
         router.get('/people', async (req, res) => {
             if (!this.validateSimulationRunning(res)) return;
@@ -198,33 +290,74 @@ export class SimulationController {
 
         /**
          * @openapi
-         * /people/{personId}/phones:
+         * /people/phones:
          *   post:
          *     summary: Purchase a phone for a person
-         *     parameters:
-         *       - in: path
-         *         name: personId
-         *         required: true
-         *         schema:
-         *           type: integer
+         *     tags:
+         *       - Private Endpoints
          *     requestBody:
          *       required: true
          *       content:
          *         application/json:
          *           schema:
          *             type: object
+         *             required:
+         *               - personId
+         *               - phoneName
          *             properties:
+         *               personId:
+         *                 type: integer
+         *                 example: 1
          *               phoneName:
          *                 type: string
+         *                 example: ePhone
          *     responses:
          *       200:
          *         description: Phone purchased successfully
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 message:
+         *                   type: string
+         *                   example: Person 1 successfully purchased phone 'ePhone'
+         *                 personId:
+         *                   type: integer
+         *                   example: 1
+         *                 phoneId:
+         *                   type: integer
+         *                   example: 10
          *       400:
          *         description: Invalid request
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: personId (number, in URL or body) and phoneName (string, in body) are required
          *       404:
          *         description: Person or Phone model not found
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: Person with id 1 not found
          *       500:
          *         description: Error
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: An error occurred while purchasing phone
          */
         router.post('/people/phones', async (req, res) => {
             const { phoneName, personId } = req.body;
@@ -261,6 +394,8 @@ export class SimulationController {
          * /time:
          *   get:
          *     summary: Get the Unix epoch timestamp when the simulation started
+         *     tags:
+         *       - Simulations
          *     responses:
          *       200:
          *         description: Unix epoch start time
@@ -274,8 +409,24 @@ export class SimulationController {
          *                   example: 1710864000000
          *       400:
          *         description: Simulation not running
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: Simulation is not running. Please start a simulation first using POST /simulations
          *       500:
          *         description: Error
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: Simulation not found
          */
         router.get('/time', async (req, res) => {
             if (!this.validateSimulationRunning(res)) return;
@@ -297,6 +448,8 @@ export class SimulationController {
          * /current-simulation-time:
          *   get:
          *     summary: Get the current in-simulation date and time
+         *     tags:
+         *       - Simulations
          *     responses:
          *       200:
          *         description: Current simulation date and time
@@ -316,8 +469,24 @@ export class SimulationController {
          *                   example: 15
          *       400:
          *         description: Simulation not running
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: Simulation is not running. Please start a simulation first using POST /simulations
          *       500:
          *         description: Error
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: Simulation not found
          */
         router.get('/current-simulation-time', async (req, res) => {
             if (!this.validateSimulationRunning(res)) return;
@@ -343,6 +512,8 @@ export class SimulationController {
          * /machines:
          *   get:
          *     summary: Get machines for sale (grouped by type)
+         *     tags:
+         *       - Market
          *     responses:
          *       200:
          *         description: List of machines (grouped by type with averaged values)
@@ -358,21 +529,45 @@ export class SimulationController {
          *                     properties:
          *                       machineName:
          *                         type: string
-         *                         example: "electronics_machine"
-         *                         description: Machine type name
+         *                         example: electronics_machine
+         *                       inputs:
+         *                         type: string
+         *                         nullable: true
+         *                         example: copper,plastic
          *                       quantity:
          *                         type: integer
-         *                         description: Total quantity for this machine type
-         *                       materialRatio:
-         *                         type: string
-         *                         example: "1:2:5"
-         *                         description: Material ratio for this machine type
+         *                         example: 5
+         *                       inputRatio:
+         *                         type: object
+         *                         additionalProperties:
+         *                           type: number
+         *                         example: { "copper": 2, "plastic": 1 }
          *                       productionRate:
-         *                         type: integer
+         *                         type: number
          *                         example: 500
-         *                         description: Average production rate for this machine type
-         *       404:
-         *         description: Machines not found
+         *                       price:
+         *                         type: number
+         *                         example: 10000
+         *       400:
+         *         description: Simulation not running
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: Simulation is not running. Please start a simulation first using POST /simulations
+         *       500:
+         *         description: Error
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: An error occurred while retrieving machines
          */
         router.get('/machines', async (req, res) => {
             if (!this.validateSimulationRunning(res)) return;
@@ -390,6 +585,8 @@ export class SimulationController {
          * /trucks:
          *   get:
          *     summary: Get trucks for sale (grouped by type)
+         *     tags:
+         *       - Market
          *     responses:
          *       200:
          *         description: List of trucks (grouped by type with averaged values)
@@ -402,22 +599,43 @@ export class SimulationController {
          *                 properties:
          *                   truckName:
          *                     type: string
-         *                     example: "large_truck"
-         *                     description: Truck type name
+         *                     example: large_truck
+         *                   description:
+         *                     type: string
+         *                     nullable: true
+         *                     example: Heavy duty truck for large loads
          *                   price:
          *                     type: number
-         *                     description: Average price for this truck type
+         *                     example: 25000
          *                   quantity:
          *                     type: integer
-         *                     description: Total quantity for this truck type
+         *                     example: 3
          *                   operatingCost:
          *                     type: number
-         *                     description: Average operating cost for this truck type
+         *                     example: 500
          *                   maximumLoad:
          *                     type: number
-         *                     description: Average maximum load for this truck type
-         *       404:
-         *         description: trucks market not found
+         *                     example: 10000
+         *       400:
+         *         description: Simulation not running
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: Simulation is not running. Please start a simulation first using POST /simulations
+         *       500:
+         *         description: Error
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: An error occurred while retrieving trucks
          */
         router.get('/trucks', async (req, res) => {
             if (!this.validateSimulationRunning(res)) return;
@@ -435,6 +653,8 @@ export class SimulationController {
          * /raw-materials:
          *   get:
          *     summary: Get raw materials (grouped by type)
+         *     tags:
+         *       - Market
          *     responses:
          *       200:
          *         description: List of raw materials (grouped by type with aggregated values)
@@ -447,16 +667,37 @@ export class SimulationController {
          *                 properties:
          *                   rawMaterialName:
          *                     type: string
-         *                     example: "copper"
-         *                     description: Raw material type name
+         *                     example: copper
+         *                   description:
+         *                     type: string
+         *                     nullable: true
+         *                     example: High quality copper
          *                   pricePerKg:
          *                     type: number
-         *                     description: Average price per kg for this material type
+         *                     example: 12.5
          *                   quantityAvailable:
          *                     type: integer
-         *                     description: Total quantity available for this material type
-         *       404:
-         *         description: Raw materials market not found
+         *                     example: 1000
+         *       400:
+         *         description: Simulation not running
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: Simulation is not running. Please start a simulation first using POST /simulations
+         *       500:
+         *         description: Error
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: An error occurred while retrieving raw materials
          */
         router.get('/raw-materials', async (req, res) => {
             if (!this.validateSimulationRunning(res)) return;
@@ -474,6 +715,8 @@ export class SimulationController {
          * /orders:
          *   get:
          *     summary: Get all orders
+         *     tags:
+         *       - Market Orders
          *     responses:
          *       200:
          *         description: List of all orders
@@ -486,32 +729,61 @@ export class SimulationController {
          *                 properties:
          *                   orderId:
          *                     type: integer
-         *                     description: Unique order identifier
+         *                     example: 1
          *                   itemName:
          *                     type: string
-         *                     description: Name of the purchased item
+         *                     example: copper
+         *                   itemId:
+         *                     type: integer
+         *                     nullable: true
+         *                     example: 101
          *                   quantity:
          *                     type: number
-         *                     description: Quantity purchased
+         *                     example: 10
          *                   unitPrice:
          *                     type: number
-         *                     description: Price per unit
+         *                     example: 12.5
          *                   totalPrice:
          *                     type: number
-         *                     description: Total price of the order
+         *                     example: 125
          *                   currency:
          *                     type: string
-         *                     description: Currency code
+         *                     example: USD
          *                   orderDate:
          *                     type: string
          *                     format: date-time
-         *                     description: When the order was placed
+         *                     example: 2024-05-01T12:00:00Z
          *                   status:
          *                     type: string
-         *                     enum: [pending, completed, cancelled]
-         *                     description: Order status
+         *                     example: pending
+         *                   item_type_id:
+         *                     type: integer
+         *                     nullable: true
+         *                     example: 2
+         *                   marketId:
+         *                     type: integer
+         *                     nullable: true
+         *                     example: 5
+         *       400:
+         *         description: Simulation not running
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: Simulation is not running. Please start a simulation first using POST /simulations
          *       500:
          *         description: Error retrieving orders
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: An error occurred while retrieving orders
          */
         router.get('/orders', async (req, res) => {
             if (!this.validateSimulationRunning(res)) return;
@@ -529,28 +801,87 @@ export class SimulationController {
          * /machines:
          *   post:
          *     summary: Create a new order for a machine
+         *     tags:
+         *       - Market Orders
          *     requestBody:
          *       required: true
          *       content:
          *         application/json:
          *           schema:
          *             type: object
+         *             required:
+         *               - machineName
+         *               - quantity
          *             properties:
          *               machineName:
          *                 type: string
+         *                 example: electronics_machine
          *               quantity:
          *                 type: integer
+         *                 example: 2
          *     responses:
          *       200:
          *         description: Machine order created
          *         content:
          *           application/json:
          *             schema:
-         *               $ref: '#/components/schemas/MachinePurchaseResponse'
+         *               type: object
+         *               properties:
+         *                 orderId:
+         *                   type: integer
+         *                   example: 1
+         *                 machineName:
+         *                   type: string
+         *                   example: electronics_machine
+         *                 totalPrice:
+         *                   type: number
+         *                   example: 20000
+         *                 unitWeight:
+         *                   type: number
+         *                   example: 100
+         *                 totalWeight:
+         *                   type: number
+         *                   example: 200
+         *                 quantity:
+         *                   type: integer
+         *                   example: 2
+         *                 machineDetails:
+         *                   type: object
+         *                   properties:
+         *                     requiredMaterials:
+         *                       type: string
+         *                       example: copper,plastic
+         *                     inputRatio:
+         *                       type: object
+         *                       additionalProperties:
+         *                         type: number
+         *                       example: { "copper": 2, "plastic": 1 }
+         *                     productionRate:
+         *                       type: number
+         *                       example: 500
+         *                 bankAccount:
+         *                   type: string
+         *                   example: 123456789
          *       400:
-         *         description: Invalid request
+         *         description: Error
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: Invalid request or simulation not running
          *       500:
          *         description: Error
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: An error occurred while creating machine order
          */
         router.post('/machines', async (req, res) => {
             if (!this.validateSimulationRunning(res)) return;
@@ -606,28 +937,79 @@ export class SimulationController {
          * /trucks:
          *   post:
          *     summary: Create a new order for a truck
+         *     tags:
+         *       - Market Orders
          *     requestBody:
          *       required: true
          *       content:
          *         application/json:
          *           schema:
          *             type: object
+         *             required:
+         *               - truckName
+         *               - quantity
          *             properties:
          *               truckName:
          *                 type: string
+         *                 example: large_truck
          *               quantity:
          *                 type: integer
+         *                 example: 2
          *     responses:
          *       200:
          *         description: Truck order created
          *         content:
          *           application/json:
          *             schema:
-         *               $ref: '#/components/schemas/VehiclePurchaseResponse'
+         *               type: object
+         *               properties:
+         *                 orderId:
+         *                   type: integer
+         *                   example: 1
+         *                 truckName:
+         *                   type: string
+         *                   example: large_truck
+         *                 totalPrice:
+         *                   type: number
+         *                   example: 50000
+         *                 unitWeight:
+         *                   type: number
+         *                   example: 2000
+         *                 totalWeight:
+         *                   type: number
+         *                   example: 4000
+         *                 quantity:
+         *                   type: integer
+         *                   example: 2
+         *                 maximumLoad:
+         *                   type: number
+         *                   example: 10000
+         *                 operatingCostPerDay:
+         *                   type: string
+         *                   example: "500"
+         *                 bankAccount:
+         *                   type: string
+         *                   example: 123456789
          *       400:
          *         description: Error
-         *       404:
-         *         description: Market not found
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: Invalid request or simulation not running
+         *       500:
+         *         description: Error
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: An error occurred while creating truck order
          */
         router.post('/trucks', async (req, res) => {
             if (!this.validateSimulationRunning(res)) return;
@@ -681,28 +1063,67 @@ export class SimulationController {
          * /raw-materials:
          *   post:
          *     summary: Create a new order for raw material
+         *     tags:
+         *       - Market Orders
          *     requestBody:
          *       required: true
          *       content:
          *         application/json:
          *           schema:
          *             type: object
+         *             required:
+         *               - materialName
+         *               - weightQuantity
          *             properties:
          *               materialName:
          *                 type: string
+         *                 example: copper
          *               weightQuantity:
          *                 type: number
+         *                 example: 100
          *     responses:
          *       200:
          *         description: Raw material order created (pending - inventory will be reduced when paid)
          *         content:
          *           application/json:
          *             schema:
-         *               $ref: '#/components/schemas/RawMaterialPurchaseResponse'
+         *               type: object
+         *               properties:
+         *                 orderId:
+         *                   type: integer
+         *                   example: 1
+         *                 materialName:
+         *                   type: string
+         *                   example: copper
+         *                 weightQuantity:
+         *                   type: number
+         *                   example: 100
+         *                 price:
+         *                   type: number
+         *                   example: 1250
+         *                 bankAccount:
+         *                   type: string
+         *                   example: 123456789
          *       400:
          *         description: Error, insufficient inventory, or simulation not running
-         *       404:
-         *         description: Raw materials market not found
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: Invalid request, insufficient inventory, or simulation not running
+         *       500:
+         *         description: Error
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: An error occurred while creating raw material order
          */
         router.post('/raw-materials', async (req, res) => {
             if (!this.validateSimulationRunning(res)) return;
@@ -762,49 +1183,107 @@ export class SimulationController {
          * /orders/payments:
          *   post:
          *     summary: Pay for and fulfill an order
+         *     tags:
+         *       - Market Orders
          *     requestBody:
          *       required: true
          *       content:
          *         application/json:
          *           schema:
          *             type: object
+         *             required:
+         *               - description
          *             properties:
-         *               orderId:
-         *                 type: integer
-         *                 description: ID of the order to pay for
+         *               description:
+         *                 type: string
+         *                 example: 1
+         *               companyName:
+         *                 type: string
+         *                 example: Acme Corp
          *     responses:
          *       200:
          *         description: Order paid and fulfilled successfully
          *         content:
          *           application/json:
          *             schema:
-         *               type: object
-         *               properties:
-         *                 orderId:
-         *                   type: integer
-         *                   description: ID of the paid order
-         *                 itemName:
-         *                   type: string
-         *                   description: Name of the purchased item
-         *                 quantity:
-         *                   type: number
-         *                   description: Quantity purchased
-         *                 totalPrice:
-         *                   type: number
-         *                   description: Total price paid
-         *                 status:
-         *                   type: string
-         *                   enum: [completed]
-         *                   description: Updated order status
-         *                 message:
-         *                   type: string
-         *                   description: Success message
+         *               oneOf:
+         *                 - type: object
+         *                   properties:
+         *                     orderId:
+         *                       type: integer
+         *                       example: 1
+         *                     itemName:
+         *                       type: string
+         *                       example: copper
+         *                     quantity:
+         *                       type: number
+         *                       example: 10
+         *                     totalPrice:
+         *                       type: number
+         *                       example: 125
+         *                     status:
+         *                       type: string
+         *                       example: completed
+         *                     message:
+         *                       type: string
+         *                       example: Order fulfilled successfully
+         *                     canFulfill:
+         *                       type: boolean
+         *                       example: true
+         *                     availableQuantity:
+         *                       type: number
+         *                       nullable: true
+         *                       example: 5
+         *                 - type: object
+         *                   properties:
+         *                     orderId:
+         *                       type: integer
+         *                       example: 1
+         *                     itemName:
+         *                       type: string
+         *                       example: copper
+         *                     quantity:
+         *                       type: number
+         *                       example: 10
+         *                     totalPrice:
+         *                       type: number
+         *                       example: 125
+         *                     status:
+         *                       type: string
+         *                       example: completed
+         *                     message:
+         *                       type: string
+         *                       example: Order fulfilled successfully
          *       400:
          *         description: Invalid request or order already completed/cancelled
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: Invalid request or order already completed/cancelled
          *       404:
          *         description: Order not found
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: Order not found
          *       500:
          *         description: Error processing payment
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: An error occurred while processing payment
          */
         router.post('/orders/payments', async (req, res) => {
             if (!this.validateSimulationRunning(res)) return;
@@ -848,6 +1327,8 @@ export class SimulationController {
          * /collections:
          *   get:
          *     summary: Get all collections (items awaiting pickup)
+         *     tags:
+         *       - Market Orders
          *     responses:
          *       200:
          *         description: List of all collections
@@ -858,33 +1339,56 @@ export class SimulationController {
          *               items:
          *                 type: object
          *                 properties:
-         *                   id:
-         *                     type: integer
-         *                     description: Collection ID
-         *                   orderId:
-         *                     type: integer
-         *                     description: Associated order ID
-         *                   itemName:
-         *                     type: string
-         *                     description: Name of the item
          *                   quantity:
          *                     type: number
-         *                     description: Quantity to collect
+         *                     example: 10
+         *                   amountCollected:
+         *                     type: number
+         *                     example: 5
+         *                   id:
+         *                     type: integer
+         *                     example: 1
+         *                   orderId:
+         *                     type: integer
+         *                     example: 1
+         *                   itemName:
+         *                     type: string
+         *                     example: copper
+         *                   itemId:
+         *                     type: integer
+         *                     example: 101
          *                   orderDate:
          *                     type: string
          *                     format: date-time
-         *                     description: When the order was placed
+         *                     example: 2024-05-01T12:00:00Z
          *                   collected:
          *                     type: boolean
-         *                     description: Whether the item has been collected
+         *                     example: false
          *                   collectionDate:
          *                     type: string
          *                     format: date-time
-         *                     description: When the item was collected (if collected)
+         *                     nullable: true
+         *                     example: 2024-05-02T12:00:00Z
          *       400:
          *         description: Simulation not running
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: Simulation is not running. Please start a simulation first using POST /simulations
          *       500:
          *         description: Error retrieving collections
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: An error occurred while retrieving collections
          */
         router.get('/collections', async (req, res) => {
             if (!this.validateSimulationRunning(res)) return;
@@ -900,21 +1404,26 @@ export class SimulationController {
         /**
          * @openapi
          * /logistics:
-         *   patch:
+         *   post:
          *     summary: Mark an item as collected (partial or full)
+         *     tags:
+         *       - Market Orders
          *     requestBody:
          *       required: true
          *       content:
          *         application/json:
          *           schema:
          *             type: object
+         *             required:
+         *               - orderId
+         *               - collectQuantity
          *             properties:
          *               orderId:
          *                 type: integer
-         *                 description: ID of the order to mark as collected
+         *                 example: 1
          *               collectQuantity:
          *                 type: number
-         *                 description: Quantity to collect (optional, defaults to all remaining)
+         *                 example: 5
          *     responses:
          *       200:
          *         description: Item collected successfully (partial or full)
@@ -925,16 +1434,40 @@ export class SimulationController {
          *               properties:
          *                 orderId:
          *                   type: integer
-         *                   description: ID of the collected order
+         *                   example: 1
          *                 quantityRemaining:
          *                   type: number
-         *                   description: Quantity remaining to collect
+         *                   example: 5
          *       400:
          *         description: Invalid request, item already collected, or simulation not running
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: Invalid request, item already collected, or simulation not running
          *       404:
          *         description: Collection not found
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: Collection not found
          *       500:
          *         description: Error processing collection
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: An error occurred while processing collection
          */
         router.post('/logistics', async (req, res) => {
             if (!this.validateSimulationRunning(res)) return;
@@ -965,6 +1498,8 @@ export class SimulationController {
          * /recycled-phones:
          *   get:
          *     summary: Get all recycled (broken) phones grouped by model
+         *     tags:
+         *       - Recycling
          *     responses:
          *       200:
          *         description: List of recycled phones grouped by model
@@ -977,14 +1512,33 @@ export class SimulationController {
          *                 properties:
          *                   modelId:
          *                     type: integer
+         *                     example: 1
          *                   modelName:
          *                     type: string
+         *                     example: ePhone
          *                   quantity:
          *                     type: integer
+         *                     example: 5
          *       400:
          *         description: Invalid request
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: Invalid request
          *       500:
          *         description: Error
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: An error occurred while retrieving recycled phones
          */
         router.get('/recycled-phones', async (req, res) => {
             try {
@@ -997,20 +1551,27 @@ export class SimulationController {
 
         /**
          * @openapi
-         * /recycled-phones:
-         *   patch:
+         * /recycled-phones-collect:
+         *   post:
          *     summary: Collect recycled phones by model name and quantity
+         *     tags:
+         *       - Recycling
          *     requestBody:
          *       required: true
          *       content:
          *         application/json:
          *           schema:
          *             type: object
+         *             required:
+         *               - modelName
+         *               - quantity
          *             properties:
          *               modelName:
          *                 type: string
+         *                 example: ePhone
          *               quantity:
          *                 type: integer
+         *                 example: 3
          *     responses:
          *       200:
          *         description: Number of phones collected and remaining
@@ -1021,12 +1582,30 @@ export class SimulationController {
          *               properties:
          *                 collected:
          *                   type: integer
+         *                   example: 3
          *                 remaining:
          *                   type: integer
+         *                   example: 2
          *       400:
          *         description: Invalid request
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: Invalid request
          *       500:
          *         description: Error
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: An error occurred while collecting recycled phones
          */
         router.post('/recycled-phones-collect', async (req, res) => {
             const { modelName, quantity } = req.body;
@@ -1043,16 +1622,42 @@ export class SimulationController {
 
         /**
          * @openapi
-         * /simulation/stop:
+         * /stop:
          *   post:
          *     summary: Stop the current simulation
+         *     tags:
+         *       - Private Endpoints
          *     responses:
          *       200:
          *         description: Simulation stopped successfully
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 message:
+         *                   type: string
+         *                   example: Simulation stopped successfully
          *       400:
          *         description: No simulation running
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: Simulation is not running. Please start a simulation first using POST /simulations
          *       500:
          *         description: Error stopping simulation
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: An error occurred while stopping simulation
          */
         router.post('/stop', async (req, res) => {
             if (!this.validateSimulationRunning(res)) return;
@@ -1080,6 +1685,8 @@ export class SimulationController {
          * /bank/initialization:
          *   get:
          *     summary: Get bank initialization data
+         *     tags:
+         *       - Banking
          *     responses:
          *       200:
          *         description: Bank initialization data
@@ -1093,9 +1700,19 @@ export class SimulationController {
          *                   description: Prime interest rate as a percentage (4-16%)
          *                   example: 7.25
          *                 investmentValue:
-         *                   type: integer
+         *                   type: number
          *                   description: Initial investment value (10B-100B)
          *                   example: 50000000000
+         *       500:
+         *         description: Error
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: An error occurred while retrieving bank initialization data
          */
         router.get('/bank/initialization', async (req, res) => {
             try {
@@ -1111,11 +1728,104 @@ export class SimulationController {
          * /simulation-info:
          *   get:
          *     summary: get information on the simulation
+         *     tags:
+         *       - Private Endpoints
          *     responses:
          *       200:
          *         description: an object containing simulation information
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 message:
+         *                   type: string
+         *                   example: Successfully retrieved simulation information
+         *                 daysElapsed:
+         *                   type: number
+         *                   example: 15
+         *                 totalTrades:
+         *                   type: number
+         *                   example: 25
+         *                 activities:
+         *                   type: array
+         *                   items:
+         *                     type: object
+         *                     properties:
+         *                       id:
+         *                         type: string
+         *                         example: "1"
+         *                       time:
+         *                         type: string
+         *                         example: "14:30"
+         *                       description:
+         *                         type: string
+         *                         example: "copper (10 kg) for Đ125.00"
+         *                       amount:
+         *                         type: number
+         *                         example: 125
+         *                 machinery:
+         *                   type: array
+         *                   items:
+         *                     type: object
+         *                     properties:
+         *                       purchases:
+         *                         type: number
+         *                         example: 5
+         *                       collections:
+         *                         type: number
+         *                         example: 3
+         *                       measure:
+         *                         type: string
+         *                         example: "2024-05"
+         *                 trucks:
+         *                   type: array
+         *                   items:
+         *                     type: object
+         *                     properties:
+         *                       purchases:
+         *                         type: number
+         *                         example: 2
+         *                       collections:
+         *                         type: number
+         *                         example: 1
+         *                       measure:
+         *                         type: string
+         *                         example: "2024-05"
+         *                 rawMaterials:
+         *                   type: array
+         *                   items:
+         *                     type: object
+         *                     properties:
+         *                       purchases:
+         *                         type: number
+         *                         example: 8
+         *                       collections:
+         *                         type: number
+         *                         example: 6
+         *                       measure:
+         *                         type: string
+         *                         example: "2024-05"
+         *       400:
+         *         description: Simulation not running
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: Simulation is not running. Please start a simulation first using POST /simulations
          *       500:
          *         description: Error retrieving said information
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: An error occurred while retrieving simulation information
          */
         router.get('/simulation-info', async (req, res) => {
             try {
@@ -1140,6 +1850,8 @@ export class SimulationController {
          * /receive-phone:
          *   post:
          *     summary: Give a person their phone
+         *     tags:
+         *       - Private Endpoints
          *     requestBody:
          *       required: true
          *       content:
@@ -1171,8 +1883,24 @@ export class SimulationController {
          *         description: Phone given
          *       400:
          *         description: Invalid input
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: Invalid input accountNumber and phoneName must be strings
          *       500:
          *         description: Internal server error
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: object
+         *               properties:
+         *                 error:
+         *                   type: string
+         *                   example: An error occurred while giving phone to person
          */
         router.post('/receive-phone', async (req, res) => {
         const { accountNumber, phoneName, id, description } = req.body;
