@@ -1,9 +1,6 @@
 import express, { Request, Response } from 'express';
 import { StartSimulationUseCase } from "../../../application/user-cases/start-simulation.use-case";
-import { DistributeSalariesUseCase } from '../../../application/user-cases/distribute-salary-use-case';
-import { GetMarketStateUseCase } from '../../../application/user-cases/get-market-state.use-case';
 import { GetPeopleStateUseCase } from '../../../application/user-cases/get-people-state.use-case';
-import { GetSimulationDateUseCase } from '../../../application/user-cases/get-simulation-date.use-case';
 import { AdvanceSimulationDayUseCase } from '../../../application/user-cases/advance-simulation-day.use-case';
 import { GetMachinesUseCase } from '../../../application/user-cases/get-machines.use-case';
 import { GetTrucksUseCase } from '../../../application/user-cases/get-trucks.use-case';
@@ -15,22 +12,18 @@ import { GetOrdersUseCase } from '../../../application/user-cases/get-orders.use
 import { PayOrderUseCase } from '../../../application/user-cases/pay-order.use-case';
 import { GetCollectionsUseCase } from '../../../application/user-cases/get-collections.use-case';
 import { CollectItemUseCase } from '../../../application/user-cases/collect-item.use-case';
-import { runDailyTasks, SIM_DAY_INTERVAL_MS } from '../../scheduling/daily-tasks.job';
+import {  SIM_DAY_INTERVAL_MS } from '../../scheduling/daily-tasks.job';
 import { IMarketRepository } from '../../../application/ports/repository.ports';
 import { PgCurrencyRepository } from '../../persistence/postgres/currency.repository';
 import { StopSimulationUseCase } from '../../../application/user-cases/stop-simulation.use-case';
-import axios from 'axios';
 import { GetBankInitializationUseCase } from '../../../application/user-cases/get-bank-initialization.use-case';
-import { RecycleRepository } from '../../persistence/postgres/recycle.repository';
 import { RecyclePhonesUseCase } from '../../../application/user-cases/recycle-phones.use-case';
 import { BreakPhonesUseCase } from '../../../application/user-cases/break-phones.use-case';
 import { PersonRepository } from '../../persistence/postgres/person.repository';
 import { PhoneRepository } from '../../persistence/postgres/phone.repository';
 import { PhoneStaticRepository } from '../../persistence/postgres/phone-static.repository';
 import { Phone } from '../../../domain/population/phone.entity';
-import { AppDataSource } from '../../../domain/population/data-source';
-import { Person } from '../../../domain/population/person.entity';
-import { PhoneStatic } from '../../../domain/population/phone-static.entity';
+
 import { MutexWrapper } from '../../concurrency';
 import { Month, Chart, KeyValueCache } from '../../../domain/shared/value-objects';
 import { getScaledDate, calculateDaysElapsed } from '../../utils';
@@ -54,10 +47,7 @@ export class SimulationController {
     constructor(
         private readonly startSimulationUseCase: StartSimulationUseCase,
         private readonly stopSimulationUseCase: StopSimulationUseCase,
-        private readonly distributeSalariesUseCase: DistributeSalariesUseCase,
-        private readonly getMarketStateUseCase: GetMarketStateUseCase,
         private readonly getPeopleStateUseCase: GetPeopleStateUseCase,
-        private readonly getSimulationDateUseCase: GetSimulationDateUseCase,
         private readonly getMachinesUseCase: GetMachinesUseCase,
         private readonly getTrucksUseCase: GetTrucksUseCase,
         private readonly getRawMaterialsUseCase: GetRawMaterialsUseCase,
@@ -70,13 +60,11 @@ export class SimulationController {
         private readonly collectItemUseCase: CollectItemUseCase,
         private readonly simulationRepo: unknown,
         private readonly marketRepo: IMarketRepository,
-        private readonly populationRepo: unknown,
         private readonly breakPhonesUseCase: BreakPhonesUseCase,
         private readonly receivePhoneUseCase: ReceivePhoneUseCase,
         private readonly buyPhoneUseCase: BuyPhoneUseCase
     ) {
-        //this.advanceSimulationDayUseCase = new AdvanceSimulationDayUseCase(this.simulationRepo, this.marketRepo);
-        this.advanceSimulationDayUseCase = new AdvanceSimulationDayUseCase(this.simulationRepo as any, this.marketRepo, this.breakPhonesUseCase, this.buyPhoneUseCase);
+        this.advanceSimulationDayUseCase = new AdvanceSimulationDayUseCase(this.simulationRepo as any, this.marketRepo, this.breakPhonesUseCase,this.buyPhoneUseCase);
         this.currencyRepo = new PgCurrencyRepository();
         this.getBankInitializationUseCase = new GetBankInitializationUseCase();
     }
@@ -537,29 +525,7 @@ export class SimulationController {
          *         content:
          *           application/json:
          *             schema:
-         *               type: object
-         *               properties:
-         *                 orderId:
-         *                   type: integer
-         *                 machineName:
-         *                   type: string
-         *                 quantity:
-         *                   type: integer
-         *                 price:
-         *                   type: number
-         *                 weight:
-         *                   type: number
-         *                 machineDetails:
-         *                   type: object
-         *                   properties:
-         *                     requiredMaterials:
-         *                       type: string
-         *                     materialRatio:
-         *                       type: string
-         *                       example: "1:2:5"
-         *                     productionRate:
-         *                       type: integer
-         *                       example: 100
+         *               $ref: '#/components/schemas/MachinePurchaseResponse'
          *       400:
          *         description: Invalid request
          *       500:
@@ -636,19 +602,7 @@ export class SimulationController {
          *         content:
          *           application/json:
          *             schema:
-         *               type: object
-         *               properties:
-         *                 orderId:
-         *                   type: integer
-         *                 truckName:
-         *                   type: string
-         *                 price:
-         *                   type: number
-         *                 maximumLoad:
-         *                   type: integer
-         *                 operatingCostPerDay:
-         *                   type: string
-         *                   example: D5000/day
+         *               $ref: '#/components/schemas/VehiclePurchaseResponse'
          *       400:
          *         description: Error
          *       404:
@@ -723,18 +677,7 @@ export class SimulationController {
          *         content:
          *           application/json:
          *             schema:
-         *               type: object
-         *               properties:
-         *                 orderId:
-         *                   type: integer
-         *                 materialName:
-         *                   type: string
-         *                 weightQuantity:
-         *                   type: number
-         *                 price:
-         *                   type: number
-         *                 bankAccount:
-         *                   type: string
+         *               $ref: '#/components/schemas/RawMaterialPurchaseResponse'
          *       400:
          *         description: Error, insufficient inventory, or simulation not running
          *       404:
@@ -842,20 +785,17 @@ export class SimulationController {
          *       500:
          *         description: Error processing payment
          */
-        router.post('/orders/pay', async (req, res) => {
+        router.post('/orders/payments', async (req, res) => {
             if (!this.validateSimulationRunning(res)) return;
             
             try {
-                const { orderId } = req.body;
+                const { description, companyName } = req.body;
                 
-                if (!orderId || typeof orderId !== 'number') {
-                    return res.status(400).json({ error: 'orderId is required and must be a number' });
+                if (!description) {
+                    return res.status(400).json({ error: 'description is required' });
                 }
                 
-                const result = await this.payOrderUseCase.execute({ orderId });
-                
-                // If order cannot be fulfilled, return 200 with canFulfill: false
-                // If order can be fulfilled, return 200 with canFulfill: true
+                const result = await this.payOrderUseCase.execute({ orderId:Number(description),companyName:companyName });
 
                 if(result.canFulfill){
                     await this.totalTrades.update((trades) => trades + 1);
@@ -975,7 +915,7 @@ export class SimulationController {
          *       500:
          *         description: Error processing collection
          */
-        router.patch('/collections', async (req, res) => {
+        router.post('/collections', async (req, res) => {
             if (!this.validateSimulationRunning(res)) return;
             
             try {
@@ -1020,6 +960,10 @@ export class SimulationController {
          *                     type: string
          *                   quantity:
          *                     type: integer
+         *       400:
+         *         description: Invalid request
+         *       500:
+         *         description: Error
          */
         router.get('/recycled-phones', async (req, res) => {
             try {
@@ -1063,7 +1007,7 @@ export class SimulationController {
          *       500:
          *         description: Error
          */
-        router.patch('/recycled-phones', async (req, res) => {
+        router.post('/recycled-phones-collect', async (req, res) => {
             const { modelName, quantity } = req.body;
             if (!modelName || typeof modelName !== 'string' || !quantity || typeof quantity !== 'number') {
                 return res.status(400).json({ error: 'modelName (string) and quantity (number) are required' });
@@ -1227,7 +1171,6 @@ export class SimulationController {
             res.status(500).json({ error: (err as Error).message });
         }
         });
-
 
         app.use('/', router);
     }

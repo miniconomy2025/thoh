@@ -37,6 +37,8 @@ export interface IMarketRepository {
     findLatestRawMaterialsMarket(): Promise<RawMaterialsMarket | null>;
     findLatestMachinesMarket(): Promise<MachinesMarket | null>;
     findLatestTrucksMarket(): Promise<TrucksMarket | null>;
+    findMachineById(id: number): Promise<any | null>;
+    findTruckById(id: number): Promise<any | null>;
 }
 
 export interface IPopulationRepository {
