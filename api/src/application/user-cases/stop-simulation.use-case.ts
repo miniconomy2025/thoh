@@ -1,4 +1,5 @@
 import { ISimulationRepository } from '../ports/repository.ports';
+import { NotifyEndSimulationUseCase } from './notify-end-simulation.use-case';
 
 export class StopSimulationUseCase {
     constructor(
@@ -10,6 +11,9 @@ export class StopSimulationUseCase {
         if (!simulation) {
             throw new Error('Simulation not found');
         }
+
+        const endSimulationNotificationUseCase = new NotifyEndSimulationUseCase();
+        await endSimulationNotificationUseCase.execute();
         
         simulation.end();
         await this.simulationRepo.save(simulation);
