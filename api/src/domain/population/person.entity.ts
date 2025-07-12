@@ -7,8 +7,8 @@ export class Person {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column('decimal', { precision: 12, scale: 2 })
-  salary: number;
+  @Column('decimal', { name: 'salary', precision: 12, scale: 2 })
+  private _salary: number;
 
   @ManyToOne(() => Phone, { nullable: true, eager: true })
   @JoinColumn({ name: 'phoneId' })
@@ -26,11 +26,17 @@ export class Person {
     isAlive: boolean = true,
     accountNumber: string | null = null
   ) {
-    this.salary = salary;
+    this._salary = salary;
     this.phone = phone;
     this.isAlive = isAlive;
     this.accountNumber = accountNumber;
   }
 
-  // ...other methods...
+  get salary(): number {
+    return this._salary;
+  }
+
+  set salary(value: number) {
+    this._salary = value;
+  }
 }
