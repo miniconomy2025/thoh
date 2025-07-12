@@ -30,6 +30,7 @@ import { AppDataSource as PopulationDataSource } from './domain/population/data-
 import { AppDataSource as MarketDataSource } from './domain/market/data-source';
 import { BreakPhonesUseCase } from './application/user-cases/break-phones.use-case';
 import dotenv from 'dotenv';
+import { QueueInitializer } from './infrastructure/queue/queue.initializer';
 
 dotenv.config();
 
@@ -37,6 +38,10 @@ async function initializeApp() {
     try {
         await PopulationDataSource.initialize();
         await MarketDataSource.initialize();
+
+        // Initialize queue consumers
+        const queueInitializer = new QueueInitializer();
+        await queueInitializer.initialize();
     } catch (err) {
         process.exit(1);
     }
