@@ -1,6 +1,6 @@
 import { RecycleRepository } from '../../infrastructure/persistence/postgres/recycle.repository';
 import { PhoneStatic } from '../../domain/population/phone-static.entity';
-import { AppDataSource } from '../../domain/population/data-source';
+import { AppDataSource } from '../../domain/shared/data-source';
 
 export class RecyclePhonesUseCase {
     private recycleRepo = new RecycleRepository();

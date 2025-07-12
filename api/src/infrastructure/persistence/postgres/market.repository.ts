@@ -2,12 +2,11 @@ import { IMarketRepository } from '../../../application/ports/repository.ports';
 import { RawMaterialsMarket, MachinesMarket, TrucksMarket } from '../../../domain/market/market.aggregate';
 import { Order } from '../../../domain/market/order.entity';
 import { Collection } from '../../../domain/market/collection.entity';
-import { AppDataSource } from '../../../domain/market/data-source';
+import { AppDataSource } from '../../../domain/shared/data-source';
 import { Machine as MachineEntity } from '../../../domain/market/machine.entity';
 import { Truck as TruckEntity } from '../../../domain/market/vehicle.entity';
 import { RawMaterial as RawMaterialEntity } from '../../../domain/market/raw-material.entity';
 import { MaterialStatic } from '../../../domain/market/material-static.entity';
-// import { pool } from './client';
 import { MarketMapper } from './market.mapper';
 
 export class PgMarketRepository implements IMarketRepository {
@@ -311,5 +310,12 @@ export class PgMarketRepository implements IMarketRepository {
     });
     if (result.length === 0) return null;
     return MarketMapper.fromDbRawMaterials({ rawMaterials: result });
+  }
+
+  async findMachineById(id: number) {
+    return this.machineRepo.findOneBy({ id });
+  }
+  async findTruckById(id: number) {
+    return this.truckRepo.findOneBy({ id });
   }
 }

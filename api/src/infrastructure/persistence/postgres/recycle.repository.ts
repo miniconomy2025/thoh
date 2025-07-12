@@ -1,4 +1,4 @@
-import { AppDataSource } from '../../../domain/population/data-source';
+import { AppDataSource } from '../../../domain/shared/data-source';
 import { Recycle } from '../../../domain/population/recycle.entity';
 
 export class RecycleRepository {

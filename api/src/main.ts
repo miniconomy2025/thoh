@@ -26,19 +26,17 @@ import { PayOrderUseCase } from './application/user-cases/pay-order.use-case';
 import { GetCollectionsUseCase } from './application/user-cases/get-collections.use-case';
 import { CollectItemUseCase } from './application/user-cases/collect-item.use-case';
 import { StopSimulationUseCase } from './application/user-cases/stop-simulation.use-case';
-import { AppDataSource as PopulationDataSource } from './domain/population/data-source';
-import { AppDataSource as MarketDataSource } from './domain/market/data-source';
 import { BreakPhonesUseCase } from './application/user-cases/break-phones.use-case';
 import dotenv from 'dotenv';
 import { ReceivePhoneUseCase } from './application/user-cases/recieve-phone-use-case';
 import { BuyPhoneUseCase } from './application/user-cases/buy-phone-use-case';
+import { AppDataSource } from './domain/shared/data-source';
 
 dotenv.config();
 
 async function initializeApp() {
     try {
-        await PopulationDataSource.initialize();
-        await MarketDataSource.initialize();
+       await AppDataSource.initialize();
     } catch (err) {
         process.exit(1);
     }
@@ -52,8 +50,6 @@ async function initializeApp() {
     const startSimulationUseCase = new StartSimulationUseCase(
         simulationRepo,
         marketRepo,
-        populationRepo,
-        bankService
     );
 
     const stopSimulationUseCase = new StopSimulationUseCase(simulationRepo);
@@ -68,7 +64,6 @@ async function initializeApp() {
     const getPeopleStateUseCase = new GetPeopleStateUseCase(populationRepo);
     const getSimulationDateUseCase = new GetSimulationDateUseCase(simulationRepo);
     
-    // Market-related use cases
     const getMachinesUseCase = new GetMachinesUseCase(marketRepo);
     const getTrucksUseCase = new GetTrucksUseCase(marketRepo);
     const getRawMaterialsUseCase = new GetRawMaterialsUseCase(marketRepo);
@@ -80,17 +75,13 @@ async function initializeApp() {
     const getCollectionsUseCase = new GetCollectionsUseCase(marketRepo);
     const collectItemUseCase = new CollectItemUseCase(marketRepo);
     const breakPhonesUseCase = new BreakPhonesUseCase(populationRepo);
-    const receivePhoneUseCase = new ReceivePhoneUseCase(populationRepo);
-    const buyPhoneUseCase = new BuyPhoneUseCase(populationRepo);
+    const receivePhoneUseCase = new ReceivePhoneUseCase();
+    const buyPhoneUseCase = new BuyPhoneUseCase();
 
-    // Instantiate the Primary Adapter (the API Controller)
     const simulationController = new SimulationController(
         startSimulationUseCase,
         stopSimulationUseCase,
-        distributeSalariesUseCase,
-        getMarketStateUseCase,
         getPeopleStateUseCase,
-        getSimulationDateUseCase,
         getMachinesUseCase,
         getTrucksUseCase,
         getRawMaterialsUseCase,
@@ -103,10 +94,9 @@ async function initializeApp() {
         collectItemUseCase,
         simulationRepo,
         marketRepo,
-        populationRepo,
         breakPhonesUseCase,
         receivePhoneUseCase,
-        buyPhoneUseCase,
+        buyPhoneUseCase
     );
 
     const app = express();
@@ -131,7 +121,6 @@ async function initializeApp() {
         res.send(swaggerSpec);
     });
 
-    // Setup all routes via registerRoutes
     registerRoutes(app, { simulationController });
 
     const PORT = 3000;
@@ -140,5 +129,4 @@ async function initializeApp() {
     });
 }
 
-// Start the application
 initializeApp().catch(console.error);

@@ -41,8 +41,6 @@ export class StartSimulationUseCase {
     constructor(
         private readonly simulationRepo: ISimulationRepository,
         private readonly marketRepo: IMarketRepository,
-        private readonly populationRepo: IPopulationRepository,
-        private readonly bankService?: any, // Optional, for initial investment
         private readonly materialStaticRepo = new MaterialStaticRepository(),
         private readonly machineStaticRepo = new MachineStaticRepository(),
         private readonly vehicleStaticRepo = new VehicleStaticRepository(),
@@ -52,13 +50,11 @@ export class StartSimulationUseCase {
 
     public async execute(): Promise<{ simulationId: number }> {
         const simulation = new Simulation();
-        simulation.start();  // Start first to set unix epoch time
-        const simulationId = await this.simulationRepo.save(simulation);  // Then save
-
-        // Notify about the epoch time
+        simulation.start(); 
+        const simulationId = await this.simulationRepo.save(simulation);  
+       
         await this.notifySimulationEpochUseCase.execute(simulation);
 
-        // Fetch static tables from the database
         const materialStatics = await this.materialStaticRepo.findAll();
         const machineStatics = await this.machineStaticRepo.findAll();
         const vehicleStatics = await this.vehicleStaticRepo.findAll();
@@ -69,29 +65,18 @@ export class StartSimulationUseCase {
 
         const { rawMaterialsMarket, machinesMarket, trucksMarket } = this.createSeededMarkets(materialNameToId, machineNameToId, vehicleNameToId);
         const people = this.createSeededPopulation(1000, { amount: 1000, currency: 'ZAR' }, simulationId, phoneStatics);
-        console.log(JSON.stringify({
-            people: people,
-            rawMaterialsMarket: rawMaterialsMarket,
-            machinesMarket: machinesMarket,
-            trucksMarket: trucksMarket,
-        }));
         const accounts = people.map(person => {
             return this.createAccount(person, simulationId);
         });
 
-        // Save all new phones first
+        await Promise.all(accounts);
+
         const phonesToSave = people
           .map(p => p.phone)
           .filter((phone): phone is Phone => !!phone);
         if (phonesToSave.length > 0) {
           await PersonRepository.getRepo().manager.getRepository(Phone).save(phonesToSave);
         }
-
-        // if (this.bankService && input.initialFunds) {
-            // await this.bankService.depositToTreasury(input.initialFunds);
-        // }
-
-        const savedAccounts = await Promise.all(accounts);
 
         await Promise.all([
             this.marketRepo.saveRawMaterialsMarket(rawMaterialsMarket),
@@ -191,10 +176,8 @@ export class StartSimulationUseCase {
     private createSeededPopulation(numberOfPeople: number, baseSalary: Money, simulationId: number, phoneModels: PhoneStatic[]): Person[] {
         const people: Person[] = [];
         for (let i = 0; i < numberOfPeople; i++) {
-            // Vary salary slightly for realism
             const salaryAmount = baseSalary.amount * (1 + (Math.random() - 0.5) * 0.2);
             const salary: Money = { amount: salaryAmount, currency: baseSalary.currency };
-            // 30% chance to have a phone
             let phone = null;
             if (phoneModels.length > 0 && Math.random() < 0.3) {
                 const model = phoneModels[Math.floor(Math.random() * phoneModels.length)];
