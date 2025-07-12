@@ -113,7 +113,7 @@ jobs:
               ssl_client_certificate \$CA_CERT_PATH;
               ssl_protocols       TLSv1.3;
               ssl_ciphers         HIGH:!aNULL:!MD5;
-              ssl_verify_client   on;
+              ssl_verify_client   optional;
 
               location / {
                   proxy_pass http://localhost:3000;
