@@ -1,5 +1,5 @@
 export type NotificationJob = {
-  type: 'recycler' | 'bulk_logistics' | 'commercial_logistics';
+  type: 'recycler' | 'bulk_logistics' | 'consumer_logistics';
   payload: any;
   attempt: number;
   maxAttempts: number;

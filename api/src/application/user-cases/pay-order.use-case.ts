@@ -101,11 +101,11 @@ export class PayOrderUseCase {
                 };
                 try {
                     if (input.companyName === "bulk_logistics") {
-                        await this.externalsService.notifyBulkLogist(truckPayload);
+                        await this.externalsService.notifyBulkLogistics(truckPayload);
    
-                    } else if (input.companyName === "commercial_logistics") {
+                    } else if (input.companyName === "consumer_logistics") {
 
-                        await this.externalsService.notifyCommercialLogistics(truckPayload);
+                        await this.externalsService.notifyBulkLogistics(truckPayload);
   
                     }
                 } catch (notifyErr) {
@@ -116,15 +116,15 @@ export class PayOrderUseCase {
                         payload: truckPayload,
                         attempt: 1,
                         maxAttempts: 5,
-                        notifyFn: this.externalsService.notifyBulkLogist.bind(this.externalsService)
+                        notifyFn: this.externalsService.notifyBulkLogistics.bind(this.externalsService)
                       });
-                    } else if (input.companyName === "commercial_logistics") {
+                    } else if (input.companyName === "consumer_logistics") {
                       RetryQueueService.enqueue({
-                        type: 'commercial_logistics',
+                        type: 'consumer_logistics',
                         payload: truckPayload,
                         attempt: 1,
                         maxAttempts: 5,
-                        notifyFn: this.externalsService.notifyCommercialLogistics.bind(this.externalsService)
+                        notifyFn: this.externalsService.notifyConsumerLogistics.bind(this.externalsService)
                       });
                     }
                 }
