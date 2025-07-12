@@ -69,7 +69,11 @@ export class StartSimulationUseCase {
             return this.createAccount(person, simulationId);
         });
 
-        await Promise.all(accounts);
+        try {
+            await Promise.all(accounts);
+        } catch (error) {
+            console.error('Error creating accounts, skipping:', error);
+        }
 
         const phonesToSave = people
           .map(p => p.phone)
