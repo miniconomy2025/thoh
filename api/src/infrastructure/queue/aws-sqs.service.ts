@@ -41,21 +41,26 @@ export class AWSSQSService implements IQueueService {
         const command = new ReceiveMessageCommand({
             QueueUrl: this.queueUrl,
             MaxNumberOfMessages: maxMessages,
-            WaitTimeSeconds: 20, // Long polling
+            WaitTimeSeconds: 1, // Reduced polling time for faster initialization
             MessageAttributeNames: ['All']
         });
 
-        const response = await this.sqs.send(command);
-        
-        if (!response.Messages) {
+        try {
+            const response = await this.sqs.send(command);
+            
+            if (!response.Messages) {
+                return [];
+            }
+
+            return response.Messages.map(msg => ({
+                id: msg.ReceiptHandle,
+                body: JSON.parse(msg.Body || '{}'),
+                attributes: msg.MessageAttributes ? this.parseAttributes(msg.MessageAttributes) : undefined
+            }));
+        } catch (error) {
+            console.error('Error receiving messages:', error);
             return [];
         }
-
-        return response.Messages.map(msg => ({
-            id: msg.ReceiptHandle,
-            body: JSON.parse(msg.Body || '{}'),
-            attributes: msg.MessageAttributes ? this.parseAttributes(msg.MessageAttributes) : undefined
-        }));
     }
 
     async deleteMessage(messageId: string): Promise<void> {

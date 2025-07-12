@@ -19,6 +19,10 @@ export class CreateAccountUseCase {
             salaryCents: Math.floor(this.person.salary * 100),
             personId: this.person.id // Include person ID for response handling
           }
+        },
+        messageGroupId: 'account-creation', // Add MessageGroupId for FIFO queue
+        attributes: {
+          MessageDeduplicationId: `account-creation-${this.person.id}-${Date.now()}` // Add deduplication ID
         }
       });
 

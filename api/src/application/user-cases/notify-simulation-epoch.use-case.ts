@@ -11,15 +11,29 @@ export class NotifySimulationEpochUseCase {
     async execute(simulation: Simulation): Promise<void> {
         try {
             const epochTime = simulation.getUnixEpochStartTime();
-
-            const agent = new Agent({
-                connect: {
-                    cert : fs.readFileSync(path.join(__dirname, 'thoh-client.crt')),
-                    key : fs.readFileSync(path.join(__dirname, 'thoh-client.key')),
-                    rejectUnauthorized: false
-                    // ca : fs.readFileSync(path.join(__dirname, 'root-ca.crt'))
+            
+            let fetchOptions = {};
+            
+            // Only try to use SSL in production
+            if (process.env.NODE_ENV === 'production') {
+                try {
+                    const certPath = path.join(__dirname, 'thoh-client.crt');
+                    const keyPath = path.join(__dirname, 'thoh-client.key');
+                    
+                    if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+                        const agent = new Agent({
+                            connect: {
+                                cert: fs.readFileSync(certPath),
+                                key: fs.readFileSync(keyPath),
+                                rejectUnauthorized: false
+                            }
+                        });
+                        fetchOptions = { dispatcher: agent };
+                    }
+                } catch (error) {
+                    console.warn('SSL certificates not found, using regular HTTP');
                 }
-            });
+            }
             
             const notificationEvent = {
                 epochStartTime: epochTime
@@ -33,7 +47,7 @@ export class NotifySimulationEpochUseCase {
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify(notificationEvent),
-                        dispatcher: agent
+                        ...fetchOptions
                     });
 
                     if (!response.ok) {

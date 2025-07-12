@@ -44,6 +44,10 @@ export class HandlePeriodicFailuresUseCase {
                         simulationDate: simulation.getCurrentSimDateString(),
                         simulationTime: simulation.getCurrentSimTime()
                     }
+                },
+                messageGroupId: 'bank-rate-update', // Add MessageGroupId for FIFO queue
+                attributes: {
+                    MessageDeduplicationId: `bank-rate-${simulation.getCurrentSimDateString()}-${Date.now()}` // Add deduplication ID
                 }
             });
 

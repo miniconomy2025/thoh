@@ -68,16 +68,14 @@ export class StartSimulationUseCase {
         const vehicleNameToId = new Map(vehicleStatics.map(v => [v.name, v.id]));
 
         const { rawMaterialsMarket, machinesMarket, trucksMarket } = this.createSeededMarkets(materialNameToId, machineNameToId, vehicleNameToId);
-        const people = this.createSeededPopulation(1000, { amount: 1000, currency: 'ZAR' }, simulationId, phoneStatics);
+        // Reduce initial population to 50 people
+        const people = this.createSeededPopulation(50, { amount: 1000, currency: 'ZAR' }, simulationId, phoneStatics);
         console.log(JSON.stringify({
             people: people,
             rawMaterialsMarket: rawMaterialsMarket,
             machinesMarket: machinesMarket,
             trucksMarket: trucksMarket,
         }));
-        const accounts = people.map(person => {
-            return this.createAccount(person, simulationId);
-        });
 
         // Save all new phones first
         const phonesToSave = people
@@ -87,18 +85,27 @@ export class StartSimulationUseCase {
           await PersonRepository.getRepo().manager.getRepository(Phone).save(phonesToSave);
         }
 
-        // if (this.bankService && input.initialFunds) {
-            // await this.bankService.depositToTreasury(input.initialFunds);
-        // }
+        // Save people first to get their IDs
+        await PersonRepository.getRepo().save(people);
 
-        const savedAccounts = await Promise.all(accounts);
+        // Process account creation in batches of 5
+        const BATCH_SIZE = 5;
+        for (let i = 0; i < people.length; i += BATCH_SIZE) {
+            const batch = people.slice(i, i + BATCH_SIZE);
+            const batchPromises = batch.map(person => this.createAccount(person, simulationId));
+            await Promise.all(batchPromises);
+            // Add a delay between batches
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            console.log(`Processed accounts batch ${Math.floor(i / BATCH_SIZE) + 1} of ${Math.ceil(people.length / BATCH_SIZE)}`);
+        }
 
+        // Save markets
         await Promise.all([
             this.marketRepo.saveRawMaterialsMarket(rawMaterialsMarket),
             this.marketRepo.saveMachinesMarket(machinesMarket),
-            this.marketRepo.saveTrucksMarket(trucksMarket),
-            PersonRepository.getRepo().save(people)
+            this.marketRepo.saveTrucksMarket(trucksMarket)
         ]);
+
         return { simulationId };
     }
 
@@ -210,6 +217,8 @@ export class StartSimulationUseCase {
 
     private async createAccount(person: Person, simulationId: number) {
         const createAccountUseCase = new CreateAccountUseCase(person);
+        // Add a small delay between account creations to avoid throttling
+        await new Promise(resolve => setTimeout(resolve, 100));
         return createAccountUseCase.execute();
     }
 }

@@ -6,14 +6,35 @@ import fs from 'fs';
 import path from 'path';
 import { PersonRepository } from '../persistence/postgres/person.repository';
 
-// Create HTTPS agent for secure connections
-const createHttpsAgent = () => new Agent({
-    connect: {
-        cert: fs.readFileSync(path.join(__dirname, '../../application/user-cases/thoh-client.crt')),
-        key: fs.readFileSync(path.join(__dirname, '../../application/user-cases/thoh-client.key')),
-        rejectUnauthorized: false
+// Create HTTP client with optional SSL
+const createHttpClient = () => {
+    let options = {};
+    
+    // Only try to use SSL in production
+    if (process.env.NODE_ENV === 'production') {
+        try {
+            const certPath = path.join(__dirname, '../../application/user-cases/thoh-client.crt');
+            const keyPath = path.join(__dirname, '../../application/user-cases/thoh-client.key');
+            
+            if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+                const agent = new Agent({
+                    connect: {
+                        cert: fs.readFileSync(certPath),
+                        key: fs.readFileSync(keyPath),
+                        rejectUnauthorized: false
+                    }
+                });
+                options = { dispatcher: agent };
+            }
+        } catch (error) {
+            console.warn('SSL certificates not found, using regular HTTP');
+        }
     }
-});
+    
+    return options;
+};
+
+const httpClientOptions = createHttpClient();
 
 export class QueueConsumer {
     private isRunning: boolean = false;
@@ -27,61 +48,101 @@ export class QueueConsumer {
         this.messageHandler = messageHandler;
     }
 
+    async initialize(): Promise<void> {
+        console.log(`[${this.type}] Initializing consumer...`);
+        // Test the connection by trying to receive messages once
+        const queue = QueueFactory.getQueue(this.type);
+        await queue.receiveMessages(1);
+        console.log(`[${this.type}] Successfully initialized`);
+    }
+
     async start(): Promise<void> {
-        if (this.isRunning) return;
+        if (this.isRunning) {
+            console.log(`[${this.type}] Consumer already running`);
+            return;
+        }
+
+        // First initialize
+        await this.initialize();
+        
+        // Then start continuous polling in the background
         this.isRunning = true;
+        this.pollMessages().catch(error => {
+            console.error(`[${this.type}] Fatal error in message polling:`, error);
+            this.isRunning = false;
+        });
+    }
+
+    private async pollMessages(): Promise<void> {
+        console.log(`[${this.type}] Starting continuous message polling...`);
         
         while (this.isRunning) {
             try {
                 const queue = QueueFactory.getQueue(this.type);
                 const messages = await queue.receiveMessages(10);
                 
+                if (messages.length > 0) {
+                    console.log(`[${this.type}] Received ${messages.length} messages`);
+                }
+                
                 await Promise.all(messages.map(async (message) => {
                     try {
+                        console.log(`[${this.type}] Processing message ${message.id}`);
                         await this.messageHandler(message.body);
+                        console.log(`[${this.type}] Successfully processed message ${message.id}`);
                         await queue.deleteMessage(message.id!);
                         this.retryCount.delete(message.id!);
                     } catch (error) {
-                        console.error(`Error processing message ${message.id}:`, error);
+                        console.error(`[${this.type}] Error processing message ${message.id}:`, error);
                         const retries = (this.retryCount.get(message.id!) || 0) + 1;
                         this.retryCount.set(message.id!, retries);
                         
                         if (retries >= this.MAX_RETRIES) {
-                            console.error(`Message ${message.id} failed after ${this.MAX_RETRIES} retries, removing from queue`);
+                            console.error(`[${this.type}] Message ${message.id} failed after ${this.MAX_RETRIES} retries, removing from queue`);
                             await queue.deleteMessage(message.id!);
                             this.retryCount.delete(message.id!);
                         }
-                        // Message will return to queue after visibility timeout for retry
                     }
                 }));
+
+                await new Promise(resolve => setTimeout(resolve, 1000));
             } catch (error) {
-                console.error('Error in queue consumer:', error);
+                console.error(`[${this.type}] Error in queue consumer:`, error);
                 await new Promise(resolve => setTimeout(resolve, 5000));
             }
         }
     }
 
     stop(): void {
+        console.log(`[${this.type}] Stopping consumer...`);
         this.isRunning = false;
     }
 }
 
 // Critical message handler for account creation and bank rate updates
 export const criticalMessageHandler = async (message: CriticalQueueMessage) => {
-    const agent = createHttpsAgent();
-
     switch (message.type) {
         case 'account_creation':
             const { salaryCents, personId } = message.payload;
             if (!salaryCents || !personId) {
                 throw new Error('Salary cents and person ID required for account creation');
             }
+
+            // In development, simulate account creation without making HTTP requests
+            if (process.env.NODE_ENV !== 'production') {
+                const accountId = `DEV-${Math.floor(Math.random() * 1000000)}`;
+                await PersonRepository.getRepo().update(personId, {
+                    accountNumber: accountId
+                });
+                console.log(`Development mode: Created simulated account ${accountId} for person ${personId}`);
+                break;
+            }
             
             const createAccountResponse = await fetch(process.env.RETAIL_BANK_API_URL + '/accounts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ salaryCents }),
-                dispatcher: agent
+                ...httpClientOptions
             });
 
             if (!createAccountResponse.ok) {
@@ -104,11 +165,17 @@ export const criticalMessageHandler = async (message: CriticalQueueMessage) => {
                 throw new Error('Prime rate, simulation date, and time required for bank rate update');
             }
 
+            // In development, skip bank rate update
+            if (process.env.NODE_ENV !== 'production') {
+                console.log(`Development mode: Skipped bank rate update (${primeRate}%)`);
+                break;
+            }
+
             const bankRateResponse = await fetch(process.env.BANK_RATE_UPDATE_URL!, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ primeRate, simulationDate, simulationTime }),
-                dispatcher: agent
+                ...httpClientOptions
             });
 
             if (!bankRateResponse.ok) {
@@ -120,8 +187,6 @@ export const criticalMessageHandler = async (message: CriticalQueueMessage) => {
 
 // Business message handler for phone-related operations
 export const businessMessageHandler = async (message: BusinessQueueMessage) => {
-    const agent = createHttpsAgent();
-
     switch (message.type) {
         case 'phone_purchase':
             const { accountNumber, phoneName, quantity } = message.payload;
@@ -139,7 +204,7 @@ export const businessMessageHandler = async (message: BusinessQueueMessage) => {
                     account_number: accountNumber,
                     items: [{ name: phoneName, quantity: quantity || 1 }]
                 }),
-                dispatcher: agent
+                ...httpClientOptions
             });
 
             if (!purchaseResponse.ok) {
@@ -155,7 +220,7 @@ export const businessMessageHandler = async (message: BusinessQueueMessage) => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ quantity: recycleQuantity }),
-                dispatcher: agent
+                ...httpClientOptions
             });
 
             if (!recycleResponse.ok) {
@@ -167,8 +232,6 @@ export const businessMessageHandler = async (message: BusinessQueueMessage) => {
 
 // Notification message handler for failures and epoch updates
 export const notificationMessageHandler = async (message: NotificationQueueMessage) => {
-    const agent = createHttpsAgent();
-
     switch (message.type) {
         case 'machine_failure':
         case 'truck_failure':
@@ -196,7 +259,7 @@ export const notificationMessageHandler = async (message: NotificationQueueMessa
                         simulationDate,
                         simulationTime
                     }),
-                    dispatcher: agent
+                    ...httpClientOptions
                 });
 
                 if (!response.ok) {
@@ -220,7 +283,7 @@ export const notificationMessageHandler = async (message: NotificationQueueMessa
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ epochStartTime }),
-                    dispatcher: agent
+                    ...httpClientOptions
                 });
 
                 if (!response.ok) {

@@ -41,6 +41,10 @@ export class AdvanceSimulationDayUseCase {
               payload: {
                 recycleQuantity: grouped.reduce((sum, group) => sum + group.quantity, 0)
               }
+            },
+            messageGroupId: 'phone-recycle', // Add MessageGroupId for FIFO queue
+            attributes: {
+                MessageDeduplicationId: `phone-recycle-${simulation.getCurrentSimDateString()}-${Date.now()}` // Add deduplication ID
             }
           });
           console.log('Phone recycling queued');
