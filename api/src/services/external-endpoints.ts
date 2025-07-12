@@ -13,7 +13,7 @@ export class ExternalsService {
   }
 
   async notifyBulkLogistics(data:any) {
-    const response = await this.baseService.post(`${process.env.BULK_LOGISTICS_API_URL}/truck/delivery`, data);
+    const response = await this.baseService.post(`${process.env.BULK_LOGISTICS_API_URL}/trucks/delivery`, data);
     return response;
   }
 

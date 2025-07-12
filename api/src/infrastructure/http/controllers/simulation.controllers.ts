@@ -11,8 +11,8 @@ import { PurchaseRawMaterialUseCase } from '../../../application/user-cases/purc
 import { GetOrdersUseCase } from '../../../application/user-cases/get-orders.use-case';
 import { PayOrderUseCase } from '../../../application/user-cases/pay-order.use-case';
 import { GetCollectionsUseCase } from '../../../application/user-cases/get-collections.use-case';
-import { CollectItemUseCase } from '../../../application/user-cases/collect-item.use-case';
 import {  SIM_DAY_INTERVAL_MS } from '../../scheduling/daily-tasks.job';
+import { CollectItemInput, CollectItemUseCase, LogisticsInput } from '../../../application/user-cases/collect-item.use-case';
 import { IMarketRepository } from '../../../application/ports/repository.ports';
 import { PgCurrencyRepository } from '../../persistence/postgres/currency.repository';
 import { StopSimulationUseCase } from '../../../application/user-cases/stop-simulation.use-case';
@@ -67,6 +67,27 @@ export class SimulationController {
         this.advanceSimulationDayUseCase = new AdvanceSimulationDayUseCase(this.simulationRepo as any, this.marketRepo, this.breakPhonesUseCase,this.buyPhoneUseCase);
         this.currencyRepo = new PgCurrencyRepository();
         this.getBankInitializationUseCase = new GetBankInitializationUseCase();
+    }
+
+    private mapLogisticsToCollection(logisticsInput: LogisticsInput): CollectItemInput {
+      
+      let totalQuantity = 0;
+
+      for (const item of logisticsInput.items) {
+        if (item.name.includes("machine")) {
+          return {
+            orderId: parseInt(logisticsInput.id),
+            collectQuantity: logisticsInput.items.length,
+          };
+        }
+
+        totalQuantity += item.quantity;
+      }
+
+      return {
+        orderId: parseInt(logisticsInput.id),
+        collectQuantity: totalQuantity,
+      };
     }
 
     private validateSimulationRunning(res: Response): boolean {
@@ -878,7 +899,7 @@ export class SimulationController {
 
         /**
          * @openapi
-         * /collections:
+         * /logistics:
          *   patch:
          *     summary: Mark an item as collected (partial or full)
          *     requestBody:
@@ -915,11 +936,11 @@ export class SimulationController {
          *       500:
          *         description: Error processing collection
          */
-        router.post('/collections', async (req, res) => {
+        router.post('/logistics', async (req, res) => {
             if (!this.validateSimulationRunning(res)) return;
             
             try {
-                const { orderId, collectQuantity } = req.body;
+                const { orderId, collectQuantity } = this.mapLogisticsToCollection(req.body);
                 
                 if (!orderId || typeof orderId !== 'number') {
                     return res.status(400).json({ error: 'orderId is required and must be a number' });
