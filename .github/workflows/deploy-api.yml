@@ -106,13 +106,55 @@ jobs:
           sudo chmod 600 \"\$SERVER_CERT_PATH\" \"\$SERVER_KEY_PATH\" \"\$CA_CERT_PATH\"
 
           sudo bash -c \"cat > \$NGINX_CONF\" <<NGINXEOF
+          # =========================================
+          # HTTP Redirect (port 80 → 443)
+          # =========================================
+          server {
+              listen 80;
+              server_name thoh.projects.bbdgrad.com thoh-api.projects.bbdgrad.com;
+
+              location / {
+                  return 301 https://$host$request_uri;
+              }
+          }
+
+          # =========================================
+          # FRONTEND: https://thoh.projects.bbdgrad.com
+          # =========================================
           server {
               listen 443 ssl;
-              server_name \$EC2_HOST;
+              server_name thoh.projects.bbdgrad.com;
 
               ssl_certificate     /etc/letsencrypt/live/thoh-api.projects.bbdgrad.com/fullchain.pem;
               ssl_certificate_key /etc/letsencrypt/live/thoh-api.projects.bbdgrad.com/privkey.pem;
-              ssl_client_certificate /etc/nginx/ssl/ca.crt
+              ssl_client_certificate /etc/nginx/ssl/ca.crt;
+
+              ssl_protocols       TLSv1.3;
+              ssl_ciphers         HIGH:!aNULL:!MD5;
+
+              ssl_verify_client   off;
+
+              location / {
+                  proxy_pass http://localhost:4173;
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade \\\$http_upgrade;
+                  proxy_set_header Connection 'upgrade';
+                  proxy_set_header Host \\\$host;
+                  proxy_cache_bypass \\\$http_upgrade;
+              }
+          }
+
+          # =========================================
+          # API: https://thoh-api.projects.bbdgrad.com
+          # =========================================
+          server {
+              listen 443 ssl;
+              server_name thoh-api.projects.bbdgrad.com;
+
+              ssl_certificate     /etc/letsencrypt/live/thoh-api.projects.bbdgrad.com/fullchain.pem;
+              ssl_certificate_key /etc/letsencrypt/live/thoh-api.projects.bbdgrad.com/privkey.pem;
+              ssl_client_certificate /etc/nginx/ssl/ca.crt;
+
               ssl_protocols       TLSv1.3;
               ssl_ciphers         HIGH:!aNULL:!MD5;
               ssl_verify_client   optional;
