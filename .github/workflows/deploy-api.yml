@@ -166,11 +166,6 @@ jobs:
                   proxy_set_header Connection 'upgrade';
                   proxy_set_header Host \\\$host;
                   proxy_cache_bypass \\\$http_upgrade;
-                  if ($remote_addr != 13.247.96.130) {
-                    if ($ssl_client_verify != SUCCESS) {
-                      return 403;
-                    }
-                  }
               }
           }
           NGINXEOF
