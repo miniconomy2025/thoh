@@ -19,15 +19,34 @@ import { Currency } from '../../../domain/population/currency.entity';
 import { Recycle } from '../../../domain/population/recycle.entity';
 import { Simulation } from '../../../domain/simulation/simulation.entity';
 
+// Configure SSL based on environment
+const getSslConfig = () => {
+  if (process.env.NODE_ENV === 'production') {
+    return {
+      ssl: {
+        rejectUnauthorized: false,
+        ca: process.env.POSTGRES_CA,
+        key: process.env.POSTGRES_KEY,
+        cert: process.env.POSTGRES_CERT,
+      }
+    };
+  }
+  return {
+    ssl: false
+  };
+};
+
+// Pool configuration with environment-aware SSL
 export const pool = new Pool({
-  user: process.env.POSTGRES_USER ,
-  host: process.env.POSTGRES_HOST ,
-  database: process.env.POSTGRES_DB ,
+  user: process.env.POSTGRES_USER,
+  host: process.env.POSTGRES_HOST,
+  database: process.env.POSTGRES_DB,
   password: process.env.POSTGRES_PASSWORD,
   port: parseInt(process.env.POSTGRES_PORT || "5432"),
-
+  ...getSslConfig()
 });
 
+// DataSource configuration with environment-aware SSL
 export const AppDataSource = new DataSource({
   type: 'postgres',
   host: process.env.POSTGRES_HOST,
@@ -37,9 +56,12 @@ export const AppDataSource = new DataSource({
   database: process.env.POSTGRES_DB,
   synchronize: false,
   logging: true,
+  ssl: process.env.NODE_ENV === 'production',
   entities: [
-    Person, Phone, PhoneStatic, MaterialStatic, Machine, MachineStatic, MachineMaterialRatio, Equipment, Truck, VehicleStatic, RawMaterial, Order, Collection, Population, Currency, Recycle, Simulation
-  ], 
+    Person, Phone, PhoneStatic, MaterialStatic, Machine, MachineStatic, 
+    MachineMaterialRatio, Equipment, Truck, VehicleStatic, RawMaterial, 
+    Order, Collection, Population, Currency, Recycle, Simulation
+  ],
   migrations: ['src/infrastructure/persistence/postgres/migrations/*.ts'],
   subscribers: [],
 }); 

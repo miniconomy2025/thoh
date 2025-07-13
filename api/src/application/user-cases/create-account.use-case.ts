@@ -1,8 +1,5 @@
 import { Person } from "../../domain/population/person.entity";
-import {Agent} from "undici";
-import fs from "fs";
-import path from "node:path";
-import { fetch } from 'undici';
+import { QueueFactory } from "../../infrastructure/queue/queue.factory";
 
 export class CreateAccountUseCase {
   private person: Person;
@@ -12,34 +9,36 @@ export class CreateAccountUseCase {
 
   async execute(): Promise<void> {
     if (!this.person.accountNumber) {
+      // Validate required fields
+      if (!this.person.id || !this.person.salary) {
+        console.error('Cannot create account: person ID or salary is missing', {
+          id: this.person.id,
+          salary: this.person.salary
+        });
+        throw new Error('Person ID and salary are required for account creation');
+      }
 
-      const agent = new Agent({
-        connect: {
-          cert : fs.readFileSync(path.join(__dirname, 'thoh-client.crt')),
-          key : fs.readFileSync(path.join(__dirname, 'thoh-client.key')),
-          rejectUnauthorized: false
+      const criticalQueue = QueueFactory.getCriticalQueue();
+      const salaryCents = Math.floor(this.person.salary * 100);
+      
+      // Queue the account creation request
+      await criticalQueue.sendMessage({
+        body: {
+          type: 'account_creation',
+          payload: {
+            salaryCents,
+            personId: this.person.id
+          }
+        },
+        messageGroupId: 'account-creation',
+        attributes: {
+          MessageDeduplicationId: `account-creation-${this.person.id}-${Date.now()}`
         }
       });
 
-      const body = { salaryCents: Math.floor(this.person.salary * 100)};
-      console.log(JSON.stringify({
-        body: body
-      }));
-      const createAccountResponse = await fetch(process.env.RETAIL_BANK_API_URL + '/accounts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(body),
-        dispatcher: agent,
-      });
-
-      const account = await createAccountResponse.body;
-      // @ts-ignore
-      this.person.accountNumber = account.accountId;
+      console.log(`Account creation queued for person ${this.person.id} with salary ${this.person.salary}`);
     } else {
-      // person already has an account, no need to create another one
+      console.log(`Person ${this.person.id} already has account ${this.person.accountNumber}`);
     }
   }
-
 }

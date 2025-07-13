@@ -143,34 +143,34 @@ export class SimulationController {
                 const { simulationId } = await this.startSimulationUseCase.execute();
                 this.simulationId = simulationId;
                 const simulation = await (this.simulationRepo as any).findById(simulationId);
+                
                 // Start daily job if not already running
                 if (!this.dailyJobInterval) {
-                    const rawMaterialsMarket = await this.marketRepo.findRawMaterialsMarket();
-                    const machinesMarket = await this.marketRepo.findMachinesMarket();
-                    const trucksMarket = await this.marketRepo.findTrucksMarket();
-                    
-                    if (simulation && rawMaterialsMarket && machinesMarket && trucksMarket) {
-                        const advanceDayUseCase = new AdvanceSimulationDayUseCase(
-                            simulation,
-                            this.marketRepo,
-                            this.breakPhonesUseCase,
-                            this.buyPhoneUseCase
-                        );
-                        this.dailyJobInterval = setInterval(async () => {
-                            if (this.simulationId) {
-                                try {
+                    this.dailyJobInterval = setInterval(async () => {
+                        if (this.simulationId) {
+                            try {
+                                const simulation = await (this.simulationRepo as any).findById(this.simulationId);
+                                if (!simulation) return;
+
+                                // Calculate how many days should have passed based on real time
+                                const elapsedRealMs = Date.now() - simulation.getUnixEpochStartTime();
+                                const SIM_DAY_MS = 2 * 60 * 1000; // 2 minutes in milliseconds
+                                const expectedDays = Math.floor(elapsedRealMs / SIM_DAY_MS) + 1;
+
+                                // Only advance if we're behind
+                                if (simulation.currentDay < expectedDays) {
                                     await this.advanceSimulationDayUseCase.execute(this.simulationId);
-                                } catch (err: unknown) {
-                                    console.error('Failed to advance simulation day:', err);
                                 }
+                            } catch (err: unknown) {
+                                console.error('Failed to advance simulation day:', err);
                             }
-                        }, SIM_DAY_INTERVAL_MS);
-                    }
+                        }
+                    }, 1000); // Check more frequently but only advance when needed
                 }
 
                 await this.simulationStartDate.update(async () => new Date());
                 res.status(201).json({ message: `Simulation started successfully and daily job started. Generated simulationId: ${simulation.id}`, simulationId });
-            } catch (error: any) {
+            } catch (error) {
                 console.error(error);
                 res.status(500).json({ error: 'Failed to start simulation.', details: (error as Error).message });
             }
