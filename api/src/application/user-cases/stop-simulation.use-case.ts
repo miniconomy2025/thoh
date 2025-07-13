@@ -1,9 +1,11 @@
 import { ISimulationRepository } from '../ports/repository.ports';
 import { NotifyEndSimulationUseCase } from './notify-end-simulation.use-case';
+import { QueueInitializer } from '../../infrastructure/queue/queue.initializer';
 
 export class StopSimulationUseCase {
     constructor(
-        private readonly simulationRepo: ISimulationRepository
+        private readonly simulationRepo: ISimulationRepository,
+        private readonly queueInitializer: QueueInitializer
     ) {}
 
     public async execute(simulationId: number): Promise<void> {
@@ -11,6 +13,9 @@ export class StopSimulationUseCase {
         if (!simulation) {
             throw new Error('Simulation not found');
         }
+
+        // First, stop the queue consumers and wait for in-flight messages
+        await this.queueInitializer.shutdown();
 
         const endSimulationNotificationUseCase = new NotifyEndSimulationUseCase();
         await endSimulationNotificationUseCase.execute();

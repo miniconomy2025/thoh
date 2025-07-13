@@ -60,12 +60,13 @@ async function initializeApp() {
 
         const startSimulationUseCase = new StartSimulationUseCase(
             simulationRepo,
-            marketRepo,
-            //populationRepo,
-            //bankService
+            marketRepo
         );
 
-        const stopSimulationUseCase = new StopSimulationUseCase(simulationRepo);
+        const stopSimulationUseCase = new StopSimulationUseCase(
+            simulationRepo,
+            queueInitializer
+        );
 
         const distributeSalariesUseCase = new DistributeSalariesUseCase(
             populationRepo,

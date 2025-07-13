@@ -43,8 +43,14 @@ export class QueueInitializer {
         }
     }
 
-    private shutdown(): void {
+    async shutdown(): Promise<void> {
         console.log('Shutting down queue consumers...');
-        this.consumers.forEach(consumer => consumer.stop());
+        // Stop all consumers
+        for (const consumer of this.consumers) {
+            consumer.stop();
+        }
+        // Wait for a short period to allow in-flight messages to complete
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        console.log('Queue consumers shutdown complete');
     }
 } 
