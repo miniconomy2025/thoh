@@ -125,9 +125,9 @@ jobs:
               listen 443 ssl;
               server_name thoh.projects.bbdgrad.com;
 
-              ssl_certificate     /etc/letsencrypt/live/thoh-api.projects.bbdgrad.com/fullchain.pem;
-              ssl_certificate_key /etc/letsencrypt/live/thoh-api.projects.bbdgrad.com/privkey.pem;
-              ssl_client_certificate /etc/nginx/ssl/ca.crt;
+              ssl_certificate     \$SERVER_CERT_PATH;
+              ssl_certificate_key \$SERVER_KEY_PATH;
+              ssl_client_certificate \$CA_CERT_PATH;
 
               ssl_protocols       TLSv1.3;
               ssl_ciphers         HIGH:!aNULL:!MD5;
@@ -151,9 +151,9 @@ jobs:
               listen 443 ssl;
               server_name thoh-api.projects.bbdgrad.com;
 
-              ssl_certificate     /etc/letsencrypt/live/thoh-api.projects.bbdgrad.com/fullchain.pem;
-              ssl_certificate_key /etc/letsencrypt/live/thoh-api.projects.bbdgrad.com/privkey.pem;
-              ssl_client_certificate /etc/nginx/ssl/ca.crt;
+              ssl_certificate     \$SERVER_CERT_PATH;
+              ssl_certificate_key \$SERVER_KEY_PATH;
+              ssl_client_certificate \$CA_CERT_PATH;
 
               ssl_protocols       TLSv1.3;
               ssl_ciphers         HIGH:!aNULL:!MD5;
