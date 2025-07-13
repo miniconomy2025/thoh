@@ -55,7 +55,7 @@ export class Simulation {
         const msInCurrentDay = elapsedRealMs % SIM_DAY_MS;
         
         // Convert to simulation time (24 hours distributed across 2 real minutes)
-        const totalSimSeconds = Math.floor((msInCurrentDay / SIM_DAY_MS) * 24 * 60 * 60);
+        const totalSimSeconds = Math.floor((msInCurrentDay / SIM_DAY_MS) * 86400); // Changed to 86400 (24 hours in seconds)
         
         const hours = Math.floor(totalSimSeconds / 3600);
         const minutes = Math.floor((totalSimSeconds % 3600) / 60);
