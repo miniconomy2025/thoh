@@ -42,9 +42,9 @@ export class AdvanceSimulationDayUseCase {
                 recycleQuantity: grouped.reduce((sum, group) => sum + group.quantity, 0)
               }
             },
-            messageGroupId: 'phone-recycle', // Add MessageGroupId for FIFO queue
+            messageGroupId: 'phone-recycle',
             attributes: {
-                MessageDeduplicationId: `phone-recycle-${simulation.getCurrentSimDateString()}-${Date.now()}` // Add deduplication ID
+                MessageDeduplicationId: `phone-recycle-${simulation.getCurrentSimDateString()}-${Date.now()}`
             }
           });
           console.log('Phone recycling queued');
@@ -54,11 +54,20 @@ export class AdvanceSimulationDayUseCase {
       }
     }
 
+    // Update market prices once per month (every 30 days)
+    if (simulation.currentDay % 30 === 0) {
+      rawMaterialsMarket.applyDailyRandomness();
+      machinesMarket.applyDailyRandomness();
+      trucksMarket.applyDailyRandomness();
+      
+      // Save market changes
+      await this.marketRepo.saveRawMaterialsMarket(rawMaterialsMarket);
+      await this.marketRepo.saveMachinesMarket(machinesMarket);
+      await this.marketRepo.saveTrucksMarket(trucksMarket);
+    }
+
     // Advance the day
     simulation.advanceDay();
-    rawMaterialsMarket.applyDailyRandomness();
-    machinesMarket.applyDailyRandomness();
-    trucksMarket.applyDailyRandomness();
 
     // Handle periodic failures
     await this.handlePeriodicFailuresUseCase.execute(simulation);
@@ -66,11 +75,8 @@ export class AdvanceSimulationDayUseCase {
     // Simulate someone randomly buying a phone
     await this.buyPhoneUseCase.execute();
 
-    // Save all changes
+    // Save simulation changes
     await this.simulationRepo.save(simulation);
-    await this.marketRepo.saveRawMaterialsMarket(rawMaterialsMarket);
-    await this.marketRepo.saveMachinesMarket(machinesMarket);
-    await this.marketRepo.saveTrucksMarket(trucksMarket);
     await this.breakPhonesUseCase.execute();
   }
 } 
