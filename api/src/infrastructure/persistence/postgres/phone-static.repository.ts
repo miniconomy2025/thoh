@@ -1,5 +1,5 @@
 import { PhoneStatic } from '../../../domain/population/phone-static.entity';
-import { AppDataSource } from '../../../domain/population/data-source';
+import { AppDataSource } from '../../../domain/shared/data-source';
 
 export class PhoneStaticRepository {
     private repo = AppDataSource.getRepository(PhoneStatic);

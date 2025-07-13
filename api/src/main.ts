@@ -26,13 +26,13 @@ import { PayOrderUseCase } from './application/user-cases/pay-order.use-case';
 import { GetCollectionsUseCase } from './application/user-cases/get-collections.use-case';
 import { CollectItemUseCase } from './application/user-cases/collect-item.use-case';
 import { StopSimulationUseCase } from './application/user-cases/stop-simulation.use-case';
-import { AppDataSource as PopulationDataSource } from './domain/population/data-source';
-import { AppDataSource as MarketDataSource } from './domain/market/data-source';
 import { BreakPhonesUseCase } from './application/user-cases/break-phones.use-case';
 import dotenv from 'dotenv';
 import { QueueInitializer } from './infrastructure/queue/queue.initializer';
 import { ReceivePhoneUseCase } from './application/user-cases/recieve-phone-use-case';
 import { BuyPhoneUseCase } from './application/user-cases/buy-phone-use-case';
+import { AppDataSource } from './domain/shared/data-source';
+import { swaggerOptions } from './swagger-options';
 
 dotenv.config();
 
@@ -41,8 +41,9 @@ async function initializeApp() {
         console.log('Initializing application...');
         
         console.log('Connecting to databases...');
-        await PopulationDataSource.initialize();
-        await MarketDataSource.initialize();
+        //await PopulationDataSource.initialize();
+        //await MarketDataSource.initialize();
+        await AppDataSource.initialize();
         console.log('Database connections established');
 
         // Initialize queue consumers
@@ -60,8 +61,8 @@ async function initializeApp() {
         const startSimulationUseCase = new StartSimulationUseCase(
             simulationRepo,
             marketRepo,
-            populationRepo,
-            bankService
+            //populationRepo,
+            //bankService
         );
 
         const stopSimulationUseCase = new StopSimulationUseCase(simulationRepo);
@@ -95,10 +96,10 @@ async function initializeApp() {
         const simulationController = new SimulationController(
             startSimulationUseCase,
             stopSimulationUseCase,
-            distributeSalariesUseCase,
-            getMarketStateUseCase,
+            //distributeSalariesUseCase,
+            //getMarketStateUseCase,
             getPeopleStateUseCase,
-            getSimulationDateUseCase,
+            //getSimulationDateUseCase,
             getMachinesUseCase,
             getTrucksUseCase,
             getRawMaterialsUseCase,
@@ -111,7 +112,7 @@ async function initializeApp() {
             collectItemUseCase,
             simulationRepo,
             marketRepo,
-            populationRepo,
+            //populationRepo,
             breakPhonesUseCase,
             receivePhoneUseCase,
             buyPhoneUseCase

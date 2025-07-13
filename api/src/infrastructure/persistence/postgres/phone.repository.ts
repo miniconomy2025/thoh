@@ -1,5 +1,5 @@
 import { Phone } from '../../../domain/population/phone.entity';
-import { AppDataSource } from '../../../domain/population/data-source';
+import { AppDataSource } from '../../../domain/shared/data-source';
 
 export class PhoneRepository {
     private repo = AppDataSource.getRepository(Phone);

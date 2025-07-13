@@ -8,7 +8,22 @@ export class ExternalsService {
     );
   }
   async notifyRecyclers() {    
-      const response = await this.baseService.post(`${process.env.RECYCLER_API_URL}`);
+      const response = await this.baseService.post(`${process.env.RECYCLER_API_URL}/notify-me`);
       return response;
+  }
+
+  async notifyBulkLogistics(data:any) {
+    const response = await this.baseService.post(`${process.env.BULK_LOGISTICS_API_URL}/trucks/delivery`, data);
+    return response;
+  }
+
+  async notifyConsumerLogistics(data:any) {
+    const response = await this.baseService.post(`${process.env.CONSUMER_LOGISTICS_API_URL}/`, data);
+    return response;
+  }
+
+  async notifyRecyclersMachineData(data:any) {
+    const response = await this.baseService.post(`${process.env.RECYCLER_API_URL}`, data);
+    return response;
   }
 }

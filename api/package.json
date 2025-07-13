@@ -5,13 +5,13 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon --watch src --ext ts --exec ts-node src/main.ts",
-    "start": "npm run typeorm -- migration:run --dataSource src/domain/market/data-source.ts && ts-node src/main.ts",
+    "start": "npm run typeorm -- migration:run --dataSource src/domain/shared/data-source.ts && ts-node src/main.ts",
     "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js",
-    "migration:generate": "npm run typeorm -- migration:generate src/infrastructure/persistence/postgres/migrations/third --dataSource src/domain/market/data-source.ts",
-    "migration:run": "npm run typeorm -- migration:run --dataSource src/domain/market/data-source.ts",
-    "migration:revert": "npm run typeorm -- migration:revert",
-    "seed": "ts-node src/domain/market/seed.ts",
-    "test:queue": "ts-node src/test/queue-test.ts"
+    "test:queue": "ts-node src/test/queue-test.ts",
+    "migration:generate": "npm run typeorm -- migration:generate src/infrastructure/persistence/postgres/migrations/third --dataSource src/domain/shared/data-source.ts",
+    "migration:run": "npm run typeorm -- migration:run --dataSource src/domain/shared/data-source.ts",
+    "migration:revert": "npm run typeorm -- migration:revert --dataSource src/domain/shared/data-source.ts",
+    "seed": "ts-node src/domain/market/seed.ts"
   },
   "keywords": [],
   "author": "",

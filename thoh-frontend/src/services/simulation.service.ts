@@ -50,8 +50,8 @@ const simulationService: SimulationService = {
     const response = await fetch(`${CONSTANTS.API_URL}/time`);
 
     if (response.ok) {
-      const data: EpochTimeResponse = await response.json();
-      return new Date(data.unixEpochStartTime);
+      const data: { epochStartTime: number } = await response.json();
+      return new Date(data.epochStartTime);
     } else {
       const error = await response.json();
       return error as BaseApiError;

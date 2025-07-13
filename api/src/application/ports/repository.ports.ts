@@ -3,6 +3,7 @@ import { Population as PopulationEntity } from '../../domain/population/populati
 import { Simulation } from "../../domain/simulation/simulation.aggregate";
 import { Order } from "../../domain/market/order.entity";
 import { Collection } from '../../domain/market/collection.entity';
+import { Person } from "../../domain/population/person.entity";
 
 export interface ISimulationRepository {
     findById(simulationId: number): Promise<Simulation | null>;
@@ -37,10 +38,12 @@ export interface IMarketRepository {
     findLatestRawMaterialsMarket(): Promise<RawMaterialsMarket | null>;
     findLatestMachinesMarket(): Promise<MachinesMarket | null>;
     findLatestTrucksMarket(): Promise<TrucksMarket | null>;
+    findMachineById(id: number): Promise<any>;
+    findTruckById(id: number): Promise<any>;
 }
 
 export interface IPopulationRepository {
     find(): Promise<PopulationEntity | null>;
     save(population: PopulationEntity): Promise<void>;
-    updatePerson(person: import('../../domain/population/person.entity').Person): Promise<void>;
+    updatePerson(person:Person): Promise<void>;
 }

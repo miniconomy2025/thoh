@@ -5,6 +5,17 @@ export interface CollectItemInput {
     collectQuantity: number;
 }
 
+export interface LogisticsItem {
+  name: string;
+  quantity: number;
+}
+
+export interface LogisticsInput {
+  id: string;
+  type: "PICKUP" | "DELIVERY";
+  items: LogisticsItem[];
+}
+
 export class CollectItemUseCase {
     constructor(private readonly marketRepo: IMarketRepository) {}
 
