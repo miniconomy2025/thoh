@@ -14,7 +14,8 @@ export type SimulationInfoResponse = BaseApiResponse & {
     }[],
     machinery: Chart[],
     trucks: Chart[],
-    rawMaterials: Chart[]
+    rawMaterials: Chart[],
+    entities: EntityInfoResponse[]
 };
 
 export type EntityInfoResponse = {
