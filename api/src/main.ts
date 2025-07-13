@@ -101,10 +101,7 @@ async function initializeApp() {
     );
 
     const app = express();
-    app.use(cors({
-        origin: 'http://ec2-13-247-96-130.af-south-1.compute.amazonaws.com:4173',
-        credentials: true
-    }));
+    app.use(cors());
     app.use(express.json());
 
     const swaggerSpec = swaggerJsdoc(swaggerOptions);
