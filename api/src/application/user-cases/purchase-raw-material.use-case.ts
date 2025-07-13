@@ -56,7 +56,7 @@ export class PurchaseRawMaterialUseCase {
                 materialName: staticMaterial.name,
                 weightQuantity: input.weightQuantity,
                 price: result.amount,
-                bankAccount: "TREASURY_ACCOUNT"
+                bankAccount: "000000000000"
             };
         } catch (error) {
             throw new Error(`Failed to purchase raw material: ${error}`);
