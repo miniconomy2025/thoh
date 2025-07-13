@@ -67,7 +67,7 @@ export class PurchaseMachineUseCase {
                 inputRatio: machine.materialRatio,
                 productionRate: machine.productionRate
             },
-            bankAccount: "TREASURY_ACCOUNT"
+            bankAccount: "000000000000"
         };
     }
 } 

@@ -63,7 +63,7 @@ export class PurchaseTruckUseCase {
             quantity: input.quantity,
             maximumLoad: truck.weight.value * 2,
             operatingCostPerDay: `${truck.operatingCostPerDay.amount}/day`,
-            bankAccount: "TREASURY_ACCOUNT"
+            bankAccount: "000000000000"
         };
     }
 } 
