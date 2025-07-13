@@ -18,7 +18,7 @@ export class ExternalsService {
   }
 
   async notifyConsumerLogistics(data:any) {
-    const response = await this.baseService.post(`${process.env.CONSUMER_LOGISTICS_API_URL}/`, data);
+    const response = await this.baseService.post(`${process.env.CONSUMER_LOGISTICS_API_URL}/webhook/payment-updates`, data);
     return response;
   }
 
