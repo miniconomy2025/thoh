@@ -5,7 +5,6 @@ import { Agent, fetch } from 'undici';
 import fs from 'fs';
 import path from 'path';
 import { PersonRepository } from '../persistence/postgres/person.repository';
-import { json } from 'body-parser';
 
 // Create HTTP client with optional SSL
 const createHttpClient = () => {
