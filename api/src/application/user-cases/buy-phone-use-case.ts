@@ -13,7 +13,7 @@ export class BuyPhoneUseCase {
 
       const usePear = Math.random() % 2 === 0;
       const model = this.getRandomModel(usePear);
-      const apiUrl = usePear ? process.env.PEAR_PHONE_API_URL : process.env.SUM_SANG_API_URL;
+      const apiUrl = usePear ? 'https://pear-company-api.projects.bbdgrad.com' : 'https://sumsang-phones-api.projects.bbdgrad.com';
 
       const success = await this.createOrder(person, model, apiUrl);
       if (!success) break;
