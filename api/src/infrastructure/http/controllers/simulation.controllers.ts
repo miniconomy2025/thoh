@@ -26,7 +26,7 @@ import { SIM_DAY_INTERVAL_MS } from '../../scheduling/daily-tasks.job';
 
 import { BuyPhoneUseCase } from '../../../application/user-cases/buy-phone-use-case';
 import { ReceivePhoneUseCase } from '../../../application/user-cases/recieve-phone-use-case';
-import { Chart, KeyValueCache, Month } from '../../../domain/shared/value-objects';
+import { Chart, KeyValueCache, WeekDay } from '../../../domain/shared/value-objects';
 import { MutexWrapper } from '../../concurrency';
 import { calculateDaysElapsed, getScaledDate } from '../../utils';
 
@@ -40,9 +40,9 @@ export class SimulationController {
     private simulationStartDate = new MutexWrapper<Date>(new Date());
     private totalTrades = new MutexWrapper<number>(0);
     private activities = new MutexWrapper<{ id: string; time: string; description: string; amount: number }[]>([]);
-    private machinery = new MutexWrapper<KeyValueCache<Month, Chart>>(new KeyValueCache<Month, Chart>());
-    private trucks = new MutexWrapper<KeyValueCache<Month, Chart>>(new KeyValueCache<Month, Chart>());
-    private rawMaterials = new MutexWrapper<KeyValueCache<Month, Chart>>(new KeyValueCache<Month, Chart>());
+    private machinery = new MutexWrapper<KeyValueCache<WeekDay, Chart>>(new KeyValueCache<WeekDay, Chart>());
+    private trucks = new MutexWrapper<KeyValueCache<WeekDay, Chart>>(new KeyValueCache<WeekDay, Chart>());
+    private rawMaterials = new MutexWrapper<KeyValueCache<WeekDay, Chart>>(new KeyValueCache<WeekDay, Chart>());
 
     constructor(
         private readonly startSimulationUseCase: StartSimulationUseCase,
@@ -907,10 +907,10 @@ export class SimulationController {
                 const simulationStartDate = await this.simulationStartDate.read((date) => date);
                 await this.machinery.update((machinery) => {
                     const dateOfPurchase = getScaledDate(simulationStartDate, new Date());
-                    const machine = machinery.get(dateOfPurchase.month);
+                    const machine = machinery.get(dateOfPurchase.weekday);
     
                     machinery.set(
-                        dateOfPurchase.month,
+                        dateOfPurchase.weekday,
                         machine ?
                         {
                             ...machine,
@@ -920,7 +920,7 @@ export class SimulationController {
                         {
                             purchases: 1,
                             collections: 0,
-                            measure: dateOfPurchase.month
+                            measure: dateOfPurchase.weekday
                         }
                     )
                     return machinery
@@ -1034,10 +1034,10 @@ export class SimulationController {
                 const simulationStartDate = await this.simulationStartDate.read((date) => date);
                 await this.trucks.update((trucks) => {
                     const dateOfPurchase = getScaledDate(simulationStartDate, new Date());
-                    const truck = trucks.get(dateOfPurchase.month);
+                    const truck = trucks.get(dateOfPurchase.weekday);
 
                     trucks.set(
-                        dateOfPurchase.month,
+                        dateOfPurchase.weekday,
                         truck ?
                         {
                             ...truck,
@@ -1047,7 +1047,7 @@ export class SimulationController {
                         {
                             purchases: 1,
                             collections: 0,
-                            measure: dateOfPurchase.month
+                            measure: dateOfPurchase.weekday
                         }
                     )
                     return trucks
@@ -1153,10 +1153,10 @@ export class SimulationController {
                 const simulationStartDate = await this.simulationStartDate.read((date) => date);
                 await this.rawMaterials.update((rawMaterials) => {
                     const dateOfPurchase = getScaledDate(simulationStartDate, new Date());
-                    const rawMaterial = rawMaterials.get(dateOfPurchase.month);
+                    const rawMaterial = rawMaterials.get(dateOfPurchase.weekday);
     
                     rawMaterials.set(
-                        dateOfPurchase.month,
+                        dateOfPurchase.weekday,
                         rawMaterial ?
                         {
                             ...rawMaterial,
@@ -1166,7 +1166,7 @@ export class SimulationController {
                         {
                             purchases: 1,
                             collections: 0,
-                            measure: dateOfPurchase.month
+                            measure: dateOfPurchase.weekday
                         }
                     )
                     return rawMaterials
