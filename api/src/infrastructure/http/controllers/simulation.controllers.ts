@@ -1832,6 +1832,8 @@ export class SimulationController {
         router.get('/simulation-info', async (req, res) => {
             try {
                 if (!this.validateSimulationRunning(res)) return;
+
+                // (await this.retrieveAccountUseCase.execute()) ?? 
                 
                 res.status(200).json({
                     message: 'Successfully retrieved simulation information',
@@ -1841,7 +1843,7 @@ export class SimulationController {
                     machinery: (await this.machinery.read(async (val) => val)).getOrderedValues(),
                     trucks: (await this.trucks.read(async (val) => val)).getOrderedValues(),
                     rawMaterials: (await this.rawMaterials.read(async (val) => val)).getOrderedValues(),
-                    entities: (await this.retrieveAccountUseCase.execute()) ?? [],
+                    entities: [],
                 });
             } catch (err: unknown) {
                 res.status(500).json({ error: (err as Error).message });
