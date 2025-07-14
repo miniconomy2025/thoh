@@ -53,7 +53,8 @@ export class GetMachinesUseCase {
                 quantity: totalQuantity,
                 inputRatio: materialRatio,
                 productionRate: averageProductionRate,
-                price: averagePrice
+                price: averagePrice,
+                weight: machineList[0].machine.weight.value
             };
         });
 
