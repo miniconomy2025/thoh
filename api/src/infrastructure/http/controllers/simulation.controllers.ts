@@ -1831,7 +1831,7 @@ export class SimulationController {
             try {
                 if (!this.validateSimulationRunning(res)) return;
 
-                const response = await fetch(`${process.env.COMMERCIAL_BANK_ACCOUNTS_URL}`);
+                const response = await fetch("https://commercial-bank-api.projects.bbdgrad.com/simulation/accounts/");
 
                 if (!response.ok) {
                     throw new Error('Failed to fetch bank account data');
