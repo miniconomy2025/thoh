@@ -33,6 +33,7 @@ import { ReceivePhoneUseCase } from './application/user-cases/recieve-phone-use-
 import { BuyPhoneUseCase } from './application/user-cases/buy-phone-use-case';
 import { AppDataSource } from './domain/shared/data-source';
 import { swaggerOptions } from './swagger-options';
+import { RetrieveAccountsUseCase } from './application/user-cases/retrieve-accounts-use-case';
 
 dotenv.config();
 
@@ -92,6 +93,7 @@ async function initializeApp() {
         const breakPhonesUseCase = new BreakPhonesUseCase(populationRepo);
         const receivePhoneUseCase = new ReceivePhoneUseCase();
         const buyPhoneUseCase = new BuyPhoneUseCase();
+        const retrieveAccountsUseCase = new RetrieveAccountsUseCase();
 
         // Instantiate the Primary Adapter (the API Controller)
         const simulationController = new SimulationController(
@@ -116,7 +118,8 @@ async function initializeApp() {
             //populationRepo,
             breakPhonesUseCase,
             receivePhoneUseCase,
-            buyPhoneUseCase
+            buyPhoneUseCase,
+            retrieveAccountsUseCase
         );
 
         const app = express();

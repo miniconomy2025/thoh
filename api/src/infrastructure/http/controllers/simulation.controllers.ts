@@ -29,6 +29,7 @@ import { ReceivePhoneUseCase } from '../../../application/user-cases/recieve-pho
 import { Chart, KeyValueCache, Month } from '../../../domain/shared/value-objects';
 import { MutexWrapper } from '../../concurrency';
 import { calculateDaysElapsed, getScaledDate } from '../../utils';
+import { RetrieveAccountsUseCase } from '../../../application/user-cases/retrieve-accounts-use-case';
 
 export class SimulationController {
     private dailyJobInterval: NodeJS.Timeout | null = null;
@@ -62,7 +63,8 @@ export class SimulationController {
         private readonly marketRepo: IMarketRepository,
         private readonly breakPhonesUseCase: BreakPhonesUseCase,
         private readonly receivePhoneUseCase: ReceivePhoneUseCase,
-        private readonly buyPhoneUseCase: BuyPhoneUseCase
+        private readonly buyPhoneUseCase: BuyPhoneUseCase,
+        private readonly retrieveAccountUseCase: RetrieveAccountsUseCase
     ) {
         this.advanceSimulationDayUseCase = new AdvanceSimulationDayUseCase(this.simulationRepo as any, this.marketRepo, this.breakPhonesUseCase,this.buyPhoneUseCase);
         this.currencyRepo = new PgCurrencyRepository();
@@ -1830,17 +1832,6 @@ export class SimulationController {
         router.get('/simulation-info', async (req, res) => {
             try {
                 if (!this.validateSimulationRunning(res)) return;
-                let response: globalThis.Response| undefined = undefined;
-
-                try{
-                    response = await fetch("https://commercial-bank-api.projects.bbdgrad.com/simulation/accounts/");
-                    if (!response.ok) {
-                        throw new Error('Failed to fetch bank account data');
-                    }
-                } catch (err: unknown) {
-                    response = undefined;
-                }
-
                 
                 res.status(200).json({
                     message: 'Successfully retrieved simulation information',
@@ -1850,7 +1841,7 @@ export class SimulationController {
                     machinery: (await this.machinery.read(async (val) => val)).getOrderedValues(),
                     trucks: (await this.trucks.read(async (val) => val)).getOrderedValues(),
                     rawMaterials: (await this.rawMaterials.read(async (val) => val)).getOrderedValues(),
-                    entities: response ? await response.json() : []
+                    entities: (await this.retrieveAccountUseCase.execute()) ?? [],
                 });
             } catch (err: unknown) {
                 res.status(500).json({ error: (err as Error).message });
