@@ -65,15 +65,6 @@ export class StartSimulationUseCase {
 
         const { rawMaterialsMarket, machinesMarket, trucksMarket } = this.createSeededMarkets(materialNameToId, machineNameToId, vehicleNameToId);
         const people = this.createSeededPopulation(50, { amount: 1000, currency: 'ZAR' }, simulationId, phoneStatics);
-        const accounts = people.map(person => {
-            return this.createAccount(person, simulationId);
-        });
-
-        try {
-            await Promise.all(accounts);
-        } catch (error) {
-            console.error('Error creating accounts, skipping:', error);
-        }
 
         const phonesToSave = people
           .map(p => p.phone)
