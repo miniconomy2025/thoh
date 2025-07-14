@@ -124,13 +124,18 @@ export const criticalMessageHandler = async (message: CriticalQueueMessage) => {
     switch (message.type) {
         case 'account_creation':
             const { salaryCents, personId } = message.payload;
-            if (!salaryCents || !personId) {
-                throw new Error('Salary cents and person ID required for account creation');
+            
+            // First check if we have the salary for the API call
+            if (!salaryCents) {
+                throw new Error('Salary cents required for account creation');
             }
 
             // In development, simulate account creation without making HTTP requests
             if (process.env.NODE_ENV !== 'production') {
                 const accountId = `DEV-${Math.floor(Math.random() * 1000000)}`;
+                if (!personId) {
+                    throw new Error('Person ID required for internal database update');
+                }
                 await PersonRepository.getRepo().update(personId, {
                     accountNumber: accountId
                 });
@@ -150,6 +155,11 @@ export const criticalMessageHandler = async (message: CriticalQueueMessage) => {
             }
 
             const accountData = await createAccountResponse.json() as { accountId: string };
+            
+            // Now check if we have the person ID for our internal update
+            if (!personId) {
+                throw new Error('Person ID required for internal database update');
+            }
             
             // Update person with new account number
             await PersonRepository.getRepo().update(personId, {
