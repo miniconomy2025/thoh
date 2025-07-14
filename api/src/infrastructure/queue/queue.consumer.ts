@@ -5,6 +5,7 @@ import { Agent, fetch } from 'undici';
 import fs from 'fs';
 import path from 'path';
 import { PersonRepository } from '../persistence/postgres/person.repository';
+import { json } from 'body-parser';
 
 // Create HTTP client with optional SSL
 const createHttpClient = () => {
@@ -142,7 +143,7 @@ export const criticalMessageHandler = async (message: CriticalQueueMessage) => {
                 console.log(`Development mode: Created simulated account ${accountId} for person ${personId}`);
                 break;
             }
-            
+            console.log(process.env.RETAIL_BANK_API_URL , JSON.stringify({salaryCents}));
             const createAccountResponse = await fetch(process.env.RETAIL_BANK_API_URL + '/accounts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
