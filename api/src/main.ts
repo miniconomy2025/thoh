@@ -122,8 +122,9 @@ async function initializeApp() {
         const app = express();
         app.use(cors(
             {
-             origin: 'http://ec2-13-247-96-130.af-south-1.compute.amazonaws.com',
-            }
+             origin: ['http://thoh.projects.bbdgrad.com','http://thoh.projects.bbdgrad.com:4173'],
+            },
+            
         ));
         app.use(express.json());
 
