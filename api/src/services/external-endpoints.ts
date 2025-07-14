@@ -8,8 +8,12 @@ export class ExternalsService {
     );
   }
   async notifyRecyclers() {    
-      const response = await this.baseService.post(`${process.env.RECYCLER_API_URL}/notify-me`);
+      const response = await this.baseService.post(`${process.env.RECYCLER_API_URL}/recycler/notify-me`);
       return response;
+  }
+  async notifyRecyclersMachineData(data:any) {
+    const response = await this.baseService.post(`${process.env.RECYCLER_API_URL}/machine-payment/notify-me`, data);
+    return response;
   }
 
   async notifyBulkLogistics(data:any) {
@@ -22,8 +26,4 @@ export class ExternalsService {
     return response;
   }
 
-  async notifyRecyclersMachineData(data:any) {
-    const response = await this.baseService.post(`${process.env.RECYCLER_API_URL}`, data);
-    return response;
-  }
 }
