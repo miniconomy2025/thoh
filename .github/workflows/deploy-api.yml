@@ -94,13 +94,13 @@ jobs:
           CERT_DIR=\"/etc/nginx/ssl\"
           SERVER_CERT_PATH=\"\$CERT_DIR/server.crt\"
           SERVER_KEY_PATH=\"\$CERT_DIR/server.key\"
-          CA_CERT_PATH=\"\$CERT_DIR/ca.crt\"
+#          CA_CERT_PATH=\"\$CERT_DIR/ca.crt\"
           NGINX_CONF=\"/etc/nginx/conf.d/thoh.conf\"
           DOMAIN=\"thoh-api.projects.bbdgrad.com\"
 
           SERVER_CERT=\"${{ secrets.SERVER_CERT }}\"
           SERVER_KEY=\"${{ secrets.SERVER_KEY }}\"
-          CA_CERT=\"${{ secrets.CA_CERT }}\"
+#          CA_CERT=\"${{ secrets.CA_CERT }}\"
           EC2_HOST=\"${{ vars.EC2_HOST }}\"
 
           sudo mkdir -p \"\$CERT_DIR\"
@@ -108,8 +108,8 @@ jobs:
 
           echo \"\$SERVER_CERT\" | sudo tee \"\$SERVER_CERT_PATH\" > /dev/null
           echo \"\$SERVER_KEY\" | sudo tee \"\$SERVER_KEY_PATH\" > /dev/null
-          echo \"\$CA_CERT\"    | sudo tee \"\$CA_CERT_PATH\"    > /dev/null
-          sudo chmod 600 \"\$SERVER_CERT_PATH\" \"\$SERVER_KEY_PATH\" \"\$CA_CERT_PATH\"
+#          echo \"\$CA_CERT\"    | sudo tee \"\$CA_CERT_PATH\"    > /dev/null
+#          sudo chmod 600 \"\$SERVER_CERT_PATH\" \"\$SERVER_KEY_PATH\" \"\$CA_CERT_PATH\"
 
           sudo bash -c \"cat > \$NGINX_CONF\" <<NGINXEOF
           # =========================================
@@ -131,9 +131,9 @@ jobs:
               listen 443 ssl;
               server_name thoh.projects.bbdgrad.com;
 
-              ssl_certificate     \$SERVER_CERT_PATH;
-              ssl_certificate_key \$SERVER_KEY_PATH;
-              ssl_client_certificate \$CA_CERT_PATH;
+#              ssl_certificate     \$SERVER_CERT_PATH;
+#              ssl_certificate_key \$SERVER_KEY_PATH;
+#              ssl_client_certificate \$CA_CERT_PATH;
 
               ssl_protocols       TLSv1.3;
               ssl_ciphers         HIGH:!aNULL:!MD5;
@@ -159,11 +159,11 @@ jobs:
 
               ssl_certificate     \$SERVER_CERT_PATH;
               ssl_certificate_key \$SERVER_KEY_PATH;
-              ssl_client_certificate \$CA_CERT_PATH;
+#              ssl_client_certificate \$CA_CERT_PATH;
 
               ssl_protocols       TLSv1.3;
               ssl_ciphers         HIGH:!aNULL:!MD5;
-              ssl_verify_client   optional;
+#              ssl_verify_client   optional;
 
               location / {
                   proxy_pass http://localhost:3000;
