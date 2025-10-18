@@ -17,170 +17,170 @@ jobs:
 
       - name: Copying stuff over
         run: |
-          scp -r -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" api ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/thoh
-
-          ssh -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "cat > /home/${{ vars.EC2_USER }}/run.sh <<'EOF'
-          #!/bin/bash
-          set -e
-          APP_DIR=\"/home/${{ vars.EC2_USER }}/thoh\"
-          SERVICE_NAME=\"thoh\"
-          ENTRY_FILE=\"dist/main.ts\"
-
-          echo \"--- Installing Node.js (v18 LTS) ---\"
-          curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
-          sudo yum install -y nodejs
-
-          echo \"--- Moving to \$APP_DIR and installing dependencies ---\"
-          cd \$APP_DIR
-          npm install --production
-
-          echo \"--- Writing .env file ---\"
-          cat <<ENVEOF > \"\$APP_DIR/.env\"
-          POSTGRES_HOST=${{ vars.POSTGRES_HOST }}
-          POSTGRES_PORT=${{ vars.POSTGRES_PORT }}
-          POSTGRES_DB=${{ vars.POSTGRES_DB }}
-          POSTGRES_USER=${{ vars.POSTGRES_USER }}
-          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-          MACHINE_FAILURE_URLS=${{ secrets.MACHINE_FAILURE_URLS }}
-          TRUCK_FAILURE_URLS=${{ secrets.TRUCK_FAILURE_URLS }}
-          BANK_RATE_UPDATE_URL=${{ secrets.BANK_RATE_UPDATE_URL }}
-          EPOCH_NOTIFICATION_URLS=${{ secrets.EPOCH_NOTIFICATION_URLS }}
-          RETAIL_BANK_API_URL=${{ secrets.RETAIL_BANK_API_URL }}
-          PEAR_PHONE_API_URL=${{ secrets.PEAR_PHONE_API_URL }}
-          SUM_SANG_API_URL=${{ secrets.SUM_SANG_API_URL }}
-          RECYCLER_API_URL=${{ secrets.RECYCLER_API_URL }}
-          AWS_REGION=${{ secrets.AWS_REGION }}
-          AWS_SQS_CRITICAL_QUEUE_URL=${{ secrets.AWS_SQS_CRITICAL_QUEUE_URL }}
-          AWS_SQS_BUSINESS_QUEUE_URL=${{ secrets.AWS_SQS_BUSINESS_QUEUE_URL }}
-          AWS_SQS_NOTIFICATION_QUEUE_URL=${{ secrets.AWS_SQS_NOTIFICATION_QUEUE_URL }}
-          AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          END_SIMULATION_URLS=${{ secrets.END_SIMULATION_URLS }}
-          COMMERCIAL_BANK_ACCOUNTS_URL=${{ secrets.COMMERCIAL_BANK_ACCOUNTS_URL }}
-          APPLICATION_NAME=${{ vars.APPLICATION_NAME }}
-          REST_BASE_PATH=${{ vars.REST_BASE_PATH }}
-          API_BASEURL=${{ vars.EC2_HOST }}${{ vars.REST_BASE_PATH }}
-          ENVEOF
-
-          chmod 600 \"\$APP_DIR/.env\"
-
-          echo \"--- Creating systemd service ---\"
-          sudo bash -c \"cat > /etc/systemd/system/\$SERVICE_NAME.service\" <<SERVICEEOF
-          [Unit]
-          Description=thoh Express App
-          After=network.target
-
-          [Service]
-          EnvironmentFile=\$APP_DIR/.env
-          WorkingDirectory=\$APP_DIR
-          ExecStart=/usr/bin/node \$APP_DIR/\$ENTRY_FILE
-          Restart=always
-          User=${{ vars.EC2_USER }}
-          Group=${{ vars.EC2_USER }}
-
-          [Install]
-          WantedBy=multi-user.target
-          SERVICEEOF
-
-          echo \"--- Reloading systemd and starting service ---\"
-          sudo systemctl daemon-reload
-          sudo systemctl enable \$SERVICE_NAME
-          sudo systemctl restart \$SERVICE_NAME
-
-          echo \"--- Installing and configuring NGINX ---\"
-          sudo yum install -y nginx
-          sudo systemctl enable nginx
-
-          CERT_DIR=\"/etc/nginx/ssl\"
-          SERVER_CERT_PATH=\"\$CERT_DIR/server.crt\"
-          SERVER_KEY_PATH=\"\$CERT_DIR/server.key\"
-          CA_CERT_PATH=\"\$CERT_DIR/ca.crt\"
-          NGINX_CONF=\"/etc/nginx/conf.d/thoh.conf\"
-          DOMAIN=\"thoh-api.projects.bbdgrad.com\"
-
-          SERVER_CERT=\"${{ secrets.SERVER_CERT }}\"
-          SERVER_KEY=\"${{ secrets.SERVER_KEY }}\"
-          CA_CERT=\"${{ secrets.CA_CERT }}\"
-          EC2_HOST=\"${{ vars.EC2_HOST }}\"
-
-          sudo mkdir -p \"\$CERT_DIR\"
-          sudo chmod 700 \"\$CERT_DIR\"
-
-          echo \"\$SERVER_CERT\" | sudo tee \"\$SERVER_CERT_PATH\" > /dev/null
-          echo \"\$SERVER_KEY\" | sudo tee \"\$SERVER_KEY_PATH\" > /dev/null
-          echo \"\$CA_CERT\"    | sudo tee \"\$CA_CERT_PATH\"    > /dev/null
-          sudo chmod 600 \"\$SERVER_CERT_PATH\" \"\$SERVER_KEY_PATH\" \"\$CA_CERT_PATH\"
-
-          sudo bash -c \"cat > \$NGINX_CONF\" <<NGINXEOF
+               scp -r -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" api ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/thoh
+               
+               ssh -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "cat > /home/${{ vars.EC2_USER }}/run.sh <<'EOF'
+               #!/bin/bash
+               set -e
+               APP_DIR=\"/home/${{ vars.EC2_USER }}/thoh\"
+               SERVICE_NAME=\"thoh\"
+               ENTRY_FILE=\"dist/main.ts\"
+               
+               echo \"--- Installing Node.js (v18 LTS) ---\"
+               curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
+               sudo yum install -y nodejs
+               
+               echo \"--- Moving to \$APP_DIR and installing dependencies ---\"
+               cd \$APP_DIR
+               npm install --production
+               
+               echo \"--- Writing .env file ---\"
+               cat <<ENVEOF > \"\$APP_DIR/.env\"
+               POSTGRES_HOST=${{ vars.POSTGRES_HOST }}
+               POSTGRES_PORT=${{ vars.POSTGRES_PORT }}
+               POSTGRES_DB=${{ vars.POSTGRES_DB }}
+               POSTGRES_USER=${{ vars.POSTGRES_USER }}
+               POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+               MACHINE_FAILURE_URLS=${{ secrets.MACHINE_FAILURE_URLS }}
+               TRUCK_FAILURE_URLS=${{ secrets.TRUCK_FAILURE_URLS }}
+               BANK_RATE_UPDATE_URL=${{ secrets.BANK_RATE_UPDATE_URL }}
+               EPOCH_NOTIFICATION_URLS=${{ secrets.EPOCH_NOTIFICATION_URLS }}
+               RETAIL_BANK_API_URL=${{ secrets.RETAIL_BANK_API_URL }}
+               PEAR_PHONE_API_URL=${{ secrets.PEAR_PHONE_API_URL }}
+               SUM_SANG_API_URL=${{ secrets.SUM_SANG_API_URL }}
+               RECYCLER_API_URL=${{ secrets.RECYCLER_API_URL }}
+               AWS_REGION=${{ secrets.AWS_REGION }}
+               AWS_SQS_CRITICAL_QUEUE_URL=${{ secrets.AWS_SQS_CRITICAL_QUEUE_URL }}
+               AWS_SQS_BUSINESS_QUEUE_URL=${{ secrets.AWS_SQS_BUSINESS_QUEUE_URL }}
+               AWS_SQS_NOTIFICATION_QUEUE_URL=${{ secrets.AWS_SQS_NOTIFICATION_QUEUE_URL }}
+               AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+               AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+               END_SIMULATION_URLS=${{ secrets.END_SIMULATION_URLS }}
+               COMMERCIAL_BANK_ACCOUNTS_URL=${{ secrets.COMMERCIAL_BANK_ACCOUNTS_URL }}
+               APPLICATION_NAME=${{ vars.APPLICATION_NAME }}
+               REST_BASE_PATH=${{ vars.REST_BASE_PATH }}
+               API_BASEURL=${{ vars.EC2_HOST }}${{ vars.REST_BASE_PATH }}
+               ENVEOF
+               
+               chmod 600 \"\$APP_DIR/.env\"
+               
+               echo \"--- Creating systemd service ---\"
+               sudo bash -c \"cat > /etc/systemd/system/\$SERVICE_NAME.service\" <<SERVICEEOF
+               [Unit]
+               Description=thoh Express App
+               After=network.target
+               
+               [Service]
+               EnvironmentFile=\$APP_DIR/.env
+               WorkingDirectory=\$APP_DIR
+               ExecStart=/usr/bin/node \$APP_DIR/\$ENTRY_FILE
+               Restart=always
+               User=${{ vars.EC2_USER }}
+               Group=${{ vars.EC2_USER }}
+               
+               [Install]
+               WantedBy=multi-user.target
+               SERVICEEOF
+               
+               echo \"--- Reloading systemd and starting service ---\"
+               sudo systemctl daemon-reload
+               sudo systemctl enable \$SERVICE_NAME
+               sudo systemctl restart \$SERVICE_NAME
+               
+               echo \"--- Installing and configuring NGINX ---\"
+               sudo yum install -y nginx
+               sudo systemctl enable nginx
+               
+               CERT_DIR=\"/etc/nginx/ssl\"
+               SERVER_CERT_PATH=\"\$CERT_DIR/server.crt\"
+               SERVER_KEY_PATH=\"\$CERT_DIR/server.key\"
+          #          CA_CERT_PATH=\"\$CERT_DIR/ca.crt\"
+               NGINX_CONF=\"/etc/nginx/conf.d/thoh.conf\"
+               DOMAIN=\"thoh-api.projects.bbdgrad.com\"
+               
+               SERVER_CERT=\"${{ secrets.SERVER_CERT }}\"
+               SERVER_KEY=\"${{ secrets.SERVER_KEY }}\"
+          #          CA_CERT=\"${{ secrets.CA_CERT }}\"
+               EC2_HOST=\"${{ vars.EC2_HOST }}\"
+               
+               sudo mkdir -p \"\$CERT_DIR\"
+               sudo chmod 700 \"\$CERT_DIR\"
+               
+               echo \"\$SERVER_CERT\" | sudo tee \"\$SERVER_CERT_PATH\" > /dev/null
+               echo \"\$SERVER_KEY\" | sudo tee \"\$SERVER_KEY_PATH\" > /dev/null
+          #          echo \"\$CA_CERT\"    | sudo tee \"\$CA_CERT_PATH\"    > /dev/null
+          #          sudo chmod 600 \"\$SERVER_CERT_PATH\" \"\$SERVER_KEY_PATH\" \"\$CA_CERT_PATH\"
+               
+               sudo bash -c \"cat > \$NGINX_CONF\" <<NGINXEOF
           # =========================================
           # HTTP Redirect (port 80 → 443)
           # =========================================
-          server {
-              listen 80;
-              server_name thoh.projects.bbdgrad.com thoh-api.projects.bbdgrad.com;
-
-              location / {
-                  return 301 https://$host$request_uri;
-              }
-          }
+               server {
+               listen 80;
+               server_name thoh.projects.bbdgrad.com thoh-api.projects.bbdgrad.com;
+               
+               location / {
+               return 301 https://$host$request_uri;
+               }
+               }
 
           # =========================================
           # FRONTEND: https://thoh.projects.bbdgrad.com
           # =========================================
-          server {
-              listen 443 ssl;
-              server_name thoh.projects.bbdgrad.com;
-
-              ssl_certificate     \$SERVER_CERT_PATH;
-              ssl_certificate_key \$SERVER_KEY_PATH;
-              ssl_client_certificate \$CA_CERT_PATH;
-
-              ssl_protocols       TLSv1.3;
-              ssl_ciphers         HIGH:!aNULL:!MD5;
-
-              ssl_verify_client   off;
-
-              location / {
-                  proxy_pass http://localhost:4173;
-                  proxy_http_version 1.1;
-                  proxy_set_header Upgrade \\\$http_upgrade;
-                  proxy_set_header Connection 'upgrade';
-                  proxy_set_header Host \\\$host;
-                  proxy_cache_bypass \\\$http_upgrade;
-              }
-          }
+               server {
+               listen 443 ssl;
+               server_name thoh.projects.bbdgrad.com;
+          
+          #              ssl_certificate     \$SERVER_CERT_PATH;
+          #              ssl_certificate_key \$SERVER_KEY_PATH;
+          #              ssl_client_certificate \$CA_CERT_PATH;
+               
+               ssl_protocols       TLSv1.3;
+               ssl_ciphers         HIGH:!aNULL:!MD5;
+               
+               ssl_verify_client   off;
+               
+               location / {
+               proxy_pass http://localhost:4173;
+               proxy_http_version 1.1;
+               proxy_set_header Upgrade \\\$http_upgrade;
+               proxy_set_header Connection 'upgrade';
+               proxy_set_header Host \\\$host;
+               proxy_cache_bypass \\\$http_upgrade;
+               }
+               }
 
           # =========================================
           # API: https://thoh-api.projects.bbdgrad.com
           # =========================================
-          server {
-              listen 443 ssl;
-              server_name thoh-api.projects.bbdgrad.com;
-
-              ssl_certificate     \$SERVER_CERT_PATH;
-              ssl_certificate_key \$SERVER_KEY_PATH;
-              ssl_client_certificate \$CA_CERT_PATH;
-
-              ssl_protocols       TLSv1.3;
-              ssl_ciphers         HIGH:!aNULL:!MD5;
-              ssl_verify_client   optional;
-
-              location / {
-                  proxy_pass http://localhost:3000;
-                  proxy_http_version 1.1;
-                  proxy_set_header Upgrade \\\$http_upgrade;
-                  proxy_set_header Connection 'upgrade';
-                  proxy_set_header Host \\\$host;
-                  proxy_cache_bypass \\\$http_upgrade;
-              }
-          }
-          NGINXEOF
-
-          echo \"Testing and restarting NGINX...\"
-          sudo nginx -t && sudo systemctl restart nginx
-
-          echo \"✅ Express app deployed and running behind NGINX.\"
-          EOF"
+               server {
+               listen 443 ssl;
+               server_name thoh-api.projects.bbdgrad.com;
+               
+               ssl_certificate     \$SERVER_CERT_PATH;
+               ssl_certificate_key \$SERVER_KEY_PATH;
+          #              ssl_client_certificate \$CA_CERT_PATH;
+               
+               ssl_protocols       TLSv1.3;
+               ssl_ciphers         HIGH:!aNULL:!MD5;
+          #              ssl_verify_client   optional;
+               
+               location / {
+               proxy_pass http://localhost:3000;
+               proxy_http_version 1.1;
+               proxy_set_header Upgrade \\\$http_upgrade;
+               proxy_set_header Connection 'upgrade';
+               proxy_set_header Host \\\$host;
+               proxy_cache_bypass \\\$http_upgrade;
+               }
+               }
+               NGINXEOF
+               
+               echo \"Testing and restarting NGINX...\"
+               sudo nginx -t && sudo systemctl restart nginx
+               
+               echo \"✅ Express app deployed and running behind NGINX.\"
+               EOF"
 
       - name: Run run.sh on EC2
         run: |
