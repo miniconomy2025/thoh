@@ -14,11 +14,17 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-
+      - name: Build Frontend
+        run: |
+          cd thoh-frontend
+          npm ci
+          npm run build
       - name: Copying stuff over
         run: |
           scp -r -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" api ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/thoh
-          
+
+          scp -r -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" thoh-frontend/dist ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/thoh-frontend
+
           ssh -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "cat > /home/${{ vars.EC2_USER }}/run.sh <<'EOF'
           #!/bin/bash
           set -e
@@ -136,12 +142,9 @@ jobs:
           ssl_verify_client   off;
           
           location / {
-          proxy_pass http://localhost:4173;
-          proxy_http_version 1.1;
-          proxy_set_header Upgrade \\\$http_upgrade;
-          proxy_set_header Connection 'upgrade';
-          proxy_set_header Host \\\$host;
-          proxy_cache_bypass \\\$http_upgrade;
+            root /home/ec2-user/thoh-frontend;
+            index index.html;
+            try_files $uri $uri/ /index.html;
           }
           }
 
