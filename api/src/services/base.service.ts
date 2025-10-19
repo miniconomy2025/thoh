@@ -6,6 +6,7 @@ export default class BaseService {
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        'Client-Id': 'thoh',
         ...options.headers,
       },
     });
@@ -19,6 +20,7 @@ export default class BaseService {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        'Client-Id': 'thoh',
       },
     });
     return response;
@@ -32,6 +34,7 @@ export default class BaseService {
         body,
         headers: {
           'Content-Type': 'application/json',
+          'Client-Id': 'thoh'
         },
       });
       return response.json();
