@@ -113,7 +113,7 @@ jobs:
           # =========================================
           server {
           listen 80;
-          server_name ${EC2_HOST};;
+          server_name ${EC2_HOST};
           
           location / {
           return 301 https://$host$request_uri;
