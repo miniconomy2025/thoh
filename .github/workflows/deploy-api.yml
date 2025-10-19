@@ -177,4 +177,4 @@ jobs:
 
       - name: Run run.sh on EC2
         run: |
-          ssh -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "chmod +x ~/run.sh && ~/run.sh"
+          ssh -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "chmod +x ~/run.sh && bash -x ~/run.sh"
