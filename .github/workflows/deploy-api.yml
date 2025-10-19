@@ -59,7 +59,7 @@ jobs:
           COMMERCIAL_BANK_ACCOUNTS_URL=${{ secrets.COMMERCIAL_BANK_ACCOUNTS_URL }}
           APPLICATION_NAME=${{ vars.APPLICATION_NAME }}
           REST_BASE_PATH=${{ vars.REST_BASE_PATH }}
-          API_BASEURL=http://${{ vars.EC2_HOST }}${{ vars.REST_BASE_PATH }}
+          API_BASEURL=https://${{ vars.EC2_HOST }}${{ vars.REST_BASE_PATH }}
           ENVEOF
 
           chmod 600 \"\$APP_DIR/.env\"
@@ -87,16 +87,43 @@ jobs:
           sudo systemctl enable \$SERVICE_NAME
           sudo systemctl restart \$SERVICE_NAME
 
-          echo \"--- Installing and configuring NGINX (HTTP only) ---\"
-          sudo yum install -y nginx
+          echo \"--- Installing and configuring NGINX with HTTPS ---\"
+          sudo yum install -y nginx openssl
           sudo systemctl enable nginx
+
+          CERT_DIR=\"/etc/nginx/ssl\"
+          sudo mkdir -p \$CERT_DIR
+
+          echo \"--- Generating self-signed cert ---\"
+          sudo openssl req -x509 -nodes -days 365 \
+            -newkey rsa:2048 \
+            -keyout \$CERT_DIR/selfsigned.key \
+            -out \$CERT_DIR/selfsigned.crt \
+            -subj \"/C=US/ST=Test/L=Test/O=Test/OU=Test/CN=${{ vars.EC2_HOST }}\"
 
           NGINX_CONF=\"/etc/nginx/conf.d/thoh.conf\"
 
           sudo bash -c \"cat > \$NGINX_CONF\" <<NGINXEOF
+          # Redirect HTTP to HTTPS
           server {
               listen 80;
               server_name _;
+
+              location / {
+                  return 301 https://\$host\$request_uri;
+              }
+          }
+
+          # HTTPS server
+          server {
+              listen 443 ssl;
+              server_name _;
+
+              ssl_certificate     \$CERT_DIR/selfsigned.crt;
+              ssl_certificate_key \$CERT_DIR/selfsigned.key;
+
+              ssl_protocols       TLSv1.2 TLSv1.3;
+              ssl_ciphers         HIGH:!aNULL:!MD5;
 
               location / {
                   proxy_pass http://localhost:3000;
@@ -109,10 +136,10 @@ jobs:
           }
           NGINXEOF
 
-          echo \"Testing and restarting NGINX...\"
+          echo \"--- Testing and restarting NGINX ---\"
           sudo nginx -t && sudo systemctl restart nginx
 
-          echo \"✅ Express app deployed and accessible via HTTP on port 80.\"
+          echo \"✅ Express app deployed and HTTPS is active on port 443.\"
           EOF"
 
       - name: Run run.sh on EC2
