@@ -44,7 +44,8 @@ export class NotifySimulationEpochUseCase {
                     const response = await fetch(targetUrl, {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json'
+                            'Content-Type': 'application/json',
+                            'Client-Id': 'thoh'
                         },
                         body: JSON.stringify(notificationEvent),
                         ...fetchOptions
