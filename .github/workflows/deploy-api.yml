@@ -43,7 +43,7 @@ jobs:
           npm install -D vite
           nohup npx vite preview --port 4173 --host 0.0.0.0 &
 
-          # Option 2: Use serve (use this if option 1 fails)
+          # Option 2: Use serve (uncomment if preferred)
           # sudo npm install -g serve
           # nohup serve -s dist -l 4173 &
 
@@ -143,19 +143,19 @@ jobs:
               location / {
                   proxy_pass http://localhost:4173;
                   proxy_http_version 1.1;
-                  proxy_set_header Upgrade \\$http_upgrade;
+                  proxy_set_header Upgrade \$http_upgrade;
                   proxy_set_header Connection upgrade;
-                  proxy_set_header Host \\$host;
-                  proxy_cache_bypass \\$http_upgrade;
+                  proxy_set_header Host \$host;
+                  proxy_cache_bypass \$http_upgrade;
               }
 
               location /api/ {
                   proxy_pass http://localhost:3000/;
                   proxy_http_version 1.1;
-                  proxy_set_header Upgrade \\$http_upgrade;
+                  proxy_set_header Upgrade \$http_upgrade;
                   proxy_set_header Connection upgrade;
-                  proxy_set_header Host \\$host;
-                  proxy_cache_bypass \\$http_upgrade;
+                  proxy_set_header Host \$host;
+                  proxy_cache_bypass \$http_upgrade;
               }
           }
           NGINXEOF
