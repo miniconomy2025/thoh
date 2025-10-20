@@ -159,4 +159,8 @@ jobs:
         run: |
           scp -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" run.sh ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/run.sh
           scp -r -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" api frontend ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/thoh
-          ssh -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "chmod +x ~/run.sh && ~/run.sh"
+          ssh -o StrictHostKeyChecking=no \
+              -o ServerAliveInterval=60 \
+              -o ServerAliveCountMax=30 \
+              -i "~/.ssh/id_rsa" \
+              ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "chmod +x ~/run.sh && nohup ~/run.sh > ~/deploy.log 2>&1 &"
