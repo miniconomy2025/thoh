@@ -1,11 +1,12 @@
 name: Deploy Express App to EC2
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -15,43 +16,34 @@ jobs:
           echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      - name: Copy API and Frontend to EC2
+      - name: Create run.sh
         run: |
-          scp -r -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" api frontend ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/thoh
-
-          ssh -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "cat > /home/${{ vars.EC2_USER }}/run.sh <<'EOF'
+          cat <<'EOF' > run.sh
           #!/bin/bash
           set -e
+
           APP_DIR="/home/${{ vars.EC2_USER }}/thoh"
           SERVICE_NAME="thoh"
           ENTRY_FILE="dist/main.ts"
 
-          echo "--- Installing Node.js (v20 LTS) ---"
+          echo "--- Installing Node.js ---"
           curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
           sudo yum install -y nodejs
 
-          echo "--- Installing PM2 for frontend serve (optional) ---"
+          echo "--- Installing PM2 ---"
           sudo npm install -g pm2
 
-          echo "--- Installing dependencies and building frontend ---"
+          echo "--- Installing and building frontend ---"
           cd $APP_DIR/frontend
           npm install
           npm run build
-
-          echo "--- Starting frontend with Vite preview ---"
-          # Option 1: Use Vite preview (assumes Vite project)
-          npm install -D vite
           nohup npx vite preview --port 4173 --host 0.0.0.0 &
 
-          # Option 2: Use serve (uncomment if preferred)
-          # sudo npm install -g serve
-          # nohup serve -s dist -l 4173 &
-
-          echo "--- Installing and starting backend ---"
+          echo "--- Installing backend dependencies ---"
           cd $APP_DIR/api
           npm install --production
 
-          echo "--- Writing .env file ---"
+          echo "--- Writing .env ---"
           cat <<ENVEOF > "$APP_DIR/api/.env"
           POSTGRES_HOST=${{ vars.POSTGRES_HOST }}
           POSTGRES_PORT=${{ vars.POSTGRES_PORT }}
@@ -79,10 +71,8 @@ jobs:
           API_BASEURL=https://${{ vars.EC2_HOST }}${{ vars.REST_BASE_PATH }}
           ENVEOF
 
-          chmod 600 "$APP_DIR/api/.env"
-
-          echo "--- Creating systemd service for API ---"
-          sudo bash -c \"cat > /etc/systemd/system/\$SERVICE_NAME.service\" <<SERVICEEOF
+          echo "--- Creating systemd service ---"
+          sudo tee /etc/systemd/system/$SERVICE_NAME.service > /dev/null <<SERVICEEOF
           [Unit]
           Description=thoh Express App
           After=network.target
@@ -99,19 +89,18 @@ jobs:
           WantedBy=multi-user.target
           SERVICEEOF
 
-          echo "--- Reloading systemd and starting API service ---"
+          echo "--- Reloading and starting backend service ---"
           sudo systemctl daemon-reload
           sudo systemctl enable $SERVICE_NAME
           sudo systemctl restart $SERVICE_NAME
 
-          echo "--- Installing and configuring NGINX with HTTPS ---"
+          echo "--- Installing and configuring NGINX ---"
           sudo yum install -y nginx openssl
           sudo systemctl enable nginx
 
           CERT_DIR="/etc/nginx/ssl"
           sudo mkdir -p $CERT_DIR
 
-          echo "--- Generating self-signed cert ---"
           sudo openssl req -x509 -nodes -days 365 \
             -newkey rsa:2048 \
             -keyout $CERT_DIR/selfsigned.key \
@@ -120,7 +109,7 @@ jobs:
 
           NGINX_CONF="/etc/nginx/conf.d/thoh.conf"
 
-          sudo bash -c "cat > $NGINX_CONF" <<NGINXEOF
+          sudo tee $NGINX_CONF > /dev/null <<NGINXEOF
           server {
               listen 80;
               server_name _;
@@ -160,12 +149,14 @@ jobs:
           }
           NGINXEOF
 
-          echo "--- Testing and restarting NGINX ---"
+          echo "--- Restarting NGINX ---"
           sudo nginx -t && sudo systemctl restart nginx
 
-          echo "✅ Frontend and Backend successfully deployed behind NGINX."
-          EOF"
+          echo "✅ Deployment complete."
+          EOF
 
-      - name: Run run.sh on EC2
+      - name: Upload files and execute on EC2
         run: |
+          scp -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" run.sh ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/run.sh
+          scp -r -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" api frontend ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/thoh
           ssh -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "chmod +x ~/run.sh && ~/run.sh"
