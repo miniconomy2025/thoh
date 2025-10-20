@@ -82,7 +82,7 @@ jobs:
           chmod 600 "$APP_DIR/api/.env"
 
           echo "--- Creating systemd service for API ---"
-          sudo bash -c "cat > /etc/systemd/system/$SERVICE_NAME.service" <<SERVICEEOF
+          sudo bash -c \"cat > /etc/systemd/system/\$SERVICE_NAME.service\" <<SERVICEEOF
           [Unit]
           Description=thoh Express App
           After=network.target
