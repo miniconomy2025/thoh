@@ -1,11 +1,11 @@
 import fs from 'fs';
 import path from "node:path";
-import { Agent, fetch, Response } from 'undici';
+import { Agent, fetch } from 'undici';
 
 export class RetrieveAccountsUseCase {
     constructor() {}
 
-    async execute(): Promise<Response | undefined> {
+    async execute(): Promise<{success:string, accounts: []} | undefined> {
         const agent = new Agent({
             connect: {
                 cert : fs.readFileSync(path.join(__dirname, 'thoh-client.crt')),
@@ -27,7 +27,7 @@ export class RetrieveAccountsUseCase {
             if (!response.ok) {
                 throw new Error(`Failed to retrieve accounts: ${response.statusText}`);
             } else{
-                return response;
+                return await response.json() as {success:string, accounts: []};
             }
         } catch (error: unknown) {
             console.error(`Failed to retrieve accounts:`, (error as Error).message);

@@ -1833,7 +1833,7 @@ export class SimulationController {
             try {
                 if (!this.validateSimulationRunning(res)) return;
 
-                // (await this.retrieveAccountUseCase.execute()) ?? 
+                const response = await this.retrieveAccountUseCase.execute();
                 
                 res.status(200).json({
                     message: 'Successfully retrieved simulation information',
@@ -1843,7 +1843,7 @@ export class SimulationController {
                     machinery: (await this.machinery.read(async (val) => val)).getOrderedValues(),
                     trucks: (await this.trucks.read(async (val) => val)).getOrderedValues(),
                     rawMaterials: (await this.rawMaterials.read(async (val) => val)).getOrderedValues(),
-                    entities: [],
+                    entities: response ? response.accounts : [],
                 });
             } catch (err: unknown) {
                 res.status(500).json({ error: (err as Error).message });
