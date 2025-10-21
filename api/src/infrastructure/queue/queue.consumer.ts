@@ -145,7 +145,8 @@ export const criticalMessageHandler = async (message: CriticalQueueMessage) => {
             console.log(process.env.RETAIL_BANK_API_URL , JSON.stringify({salaryCents}));
             const createAccountResponse = await fetch(process.env.RETAIL_BANK_API_URL + '/accounts', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json',
+                'Client-Id': 'thoh',  },
                 body: JSON.stringify({ salaryCents }),
                 ...httpClientOptions
             });
@@ -183,7 +184,7 @@ export const criticalMessageHandler = async (message: CriticalQueueMessage) => {
 
             const bankRateResponse = await fetch(process.env.BANK_RATE_UPDATE_URL!, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json' ,'Client-Id': 'thoh',},
                 body: JSON.stringify({ primeRate, simulationDate, simulationTime }),
                 ...httpClientOptions
             });
@@ -209,7 +210,7 @@ export const businessMessageHandler = async (message: BusinessQueueMessage) => {
 
             const purchaseResponse = await fetch(`${apiUrl}/orders`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json','Client-Id': 'thoh', },
                 body: JSON.stringify({
                     account_number: accountNumber,
                     items: [{ name: phoneName, quantity: quantity || 1 }]
@@ -228,7 +229,7 @@ export const businessMessageHandler = async (message: BusinessQueueMessage) => {
 
             const recycleResponse = await fetch(process.env.RECYCLER_API_URL!, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json','Client-Id': 'thoh', },
                 body: JSON.stringify({ quantity: recycleQuantity }),
                 ...httpClientOptions
             });
@@ -262,7 +263,7 @@ export const notificationMessageHandler = async (message: NotificationQueueMessa
             await Promise.all(urls.map(async (url) => {
                 const response = await fetch(url.trim(), {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json' ,'Client-Id': 'thoh',},
                     body: JSON.stringify({
                         itemName,
                         failureQuantity,
@@ -291,7 +292,7 @@ export const notificationMessageHandler = async (message: NotificationQueueMessa
             await Promise.all(epochUrls.map(async (url) => {
                 const response = await fetch(url.trim(), {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json' ,'Client-Id': 'thoh',},
                     body: JSON.stringify({ epochStartTime }),
                     ...httpClientOptions
                 });

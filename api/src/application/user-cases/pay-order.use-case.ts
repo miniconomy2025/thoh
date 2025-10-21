@@ -105,7 +105,7 @@ export class PayOrderUseCase {
    
                     } else if (input.companyName === "consumer_logistics") {
 
-                        await this.externalsService.notifyBulkLogistics(truckPayload);
+                        await this.externalsService.notifyConsumerLogistics(truckPayload);
   
                     }
                 } catch (notifyErr) {
