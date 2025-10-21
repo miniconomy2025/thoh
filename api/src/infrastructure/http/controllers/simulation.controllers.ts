@@ -1291,13 +1291,13 @@ export class SimulationController {
             if (!this.validateSimulationRunning(res)) return;
             
             try {
-                const { description, companyName } = req.body;
+                const { description, from_company_name } = req.body;
                 
                 if (!description) {
                     return res.status(400).json({ error: 'description is required' });
                 }
                 
-                const result = await this.payOrderUseCase.execute({ orderId:Number(description),companyName:companyName });
+                const result = await this.payOrderUseCase.execute({ orderId:Number(description),companyName:from_company_name });
 
                 if(result.canFulfill){
                     await this.totalTrades.update((trades) => trades + 1);
