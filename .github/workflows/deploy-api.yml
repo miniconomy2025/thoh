@@ -18,26 +18,6 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-      - name: Reboot EC2 instance before deployment
-        run: |
-          echo "Rebooting EC2 instance..."
-          ssh -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" \
-            ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "sudo reboot" || true
-          echo "Waiting for Instance to get back online"
-          
-          for i in {1..30}; do
-            sleep 10
-            if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -i "~/.ssh/id_rsa" \
-              ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "echo '✅ EC2 is back online'" >/dev/null 2>&1; then
-              echo "✅ EC2 instance is back online."
-              break
-            fi
-            echo "Waiting for EC2 to finish rebooting... ($i/30)"
-            if [ $i -eq 30 ]; then
-              echo "❌ EC2 instance did not come back online in time."
-              exit 1
-            fi
-          done
 
       - name: Upload application files
         run: |
