@@ -37,11 +37,12 @@ jobs:
           cd $APP_DIR/frontend
           npm install
           npm run build
-          nohup npx vite preview --port 4173 --host 0.0.0.0 &
+          npm run dev
 
           echo "--- Installing backend dependencies ---"
           cd $APP_DIR/api
           npm install --production
+          npm run start
 
           echo "--- Writing .env ---"
           cat <<ENVEOF > "$APP_DIR/api/.env"
@@ -68,8 +69,20 @@ jobs:
           COMMERCIAL_BANK_ACCOUNTS_URL=${{ secrets.COMMERCIAL_BANK_ACCOUNTS_URL }}
           APPLICATION_NAME=${{ vars.APPLICATION_NAME }}
           REST_BASE_PATH=${{ vars.REST_BASE_PATH }}
+          NODE_ENV=${{ vars.NODE_ENV }}
+          COMMERCIAL_BANK_URL=${{ vars.COMMERCIAL_BANK_URL }}
           API_BASEURL=https://${{ vars.EC2_HOST }}${{ vars.REST_BASE_PATH }}
+          BULK_LOGISTICS_API_URL=${{ vars.BULK_LOGISTICS_API_URL}}
+          CONSUMER_LOGISTICS_API_URL=${{ vars.CONSUMER_LOGISTICS_API_URL }}
+          POSTGRES_CA=${{ vars.POSTGRES_CA }}
+          POSTGRES_KEY=${{ vars.POSTGRES_KEY }}
+          POSTGRES_CERT=${{ vars.POSTGRES_CERT }}
+          VITE_API_URL=${{ vars.VITE_API_URL }}
+          VITE_COMMERCIAL_BANK_URL=${{ vars.VITE_COMMERCIAL_BANK_URL }}
           ENVEOF
+          
+          echo "--- Copying .env to frontend ---"
+          cat "$APP_DIR/api/.env" > "$APP_DIR/frontend/.env"
 
           echo "--- Creating systemd service ---"
           sudo tee /etc/systemd/system/$SERVICE_NAME.service > /dev/null <<SERVICEEOF
