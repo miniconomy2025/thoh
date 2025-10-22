@@ -6,22 +6,14 @@ export class RetrieveAccountsUseCase {
     constructor() {}
 
     async execute(): Promise<Response | undefined> {
-        const agent = new Agent({
-            connect: {
-                cert : fs.readFileSync(path.join(__dirname, 'thoh-client.crt')),
-                key : fs.readFileSync(path.join(__dirname, 'thoh-client.key')),
-                ca : fs.readFileSync(path.join(__dirname, 'root-ca.crt')),
-                rejectUnauthorized: false
-            }
-        });
-
+      
         try{
             const response = await fetch("https://commercial-bank-api.projects.bbdgrad.com/simulation/accounts/", {
                 method: 'GET',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Client-Id': 'thoh'
                 },
-                dispatcher: agent
             });
     
             if (!response.ok) {

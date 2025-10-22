@@ -1,40 +1,8 @@
 import { QueueFactory } from './queue.factory';
 import { QueueType, CriticalQueueMessage, BusinessQueueMessage, NotificationQueueMessage } from './queue.types';
 import { QueueMessage } from './queue.interface';
-import { Agent, fetch } from 'undici';
-import fs from 'fs';
-import path from 'path';
+import { fetch } from 'undici';
 import { PersonRepository } from '../persistence/postgres/person.repository';
-
-// Create HTTP client with optional SSL
-const createHttpClient = () => {
-    let options = {};
-    
-    // Only try to use SSL in production
-    if (process.env.NODE_ENV === 'production') {
-        try {
-            const certPath = path.join(__dirname, '../../application/user-cases/thoh-client.crt');
-            const keyPath = path.join(__dirname, '../../application/user-cases/thoh-client.key');
-            
-            if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
-                const agent = new Agent({
-                    connect: {
-                        cert: fs.readFileSync(certPath),
-                        key: fs.readFileSync(keyPath),
-                        rejectUnauthorized: false
-                    }
-                });
-                options = { dispatcher: agent };
-            }
-        } catch (error) {
-            console.warn('SSL certificates not found, using regular HTTP');
-        }
-    }
-    
-    return options;
-};
-
-const httpClientOptions = createHttpClient();
 
 export class QueueConsumer {
     private isRunning: boolean = false;
@@ -147,8 +115,7 @@ export const criticalMessageHandler = async (message: CriticalQueueMessage) => {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json',
                 'Client-Id': 'thoh',  },
-                body: JSON.stringify({ salaryCents }),
-                ...httpClientOptions
+                body: JSON.stringify({ salaryCents })
             });
 
             if (!createAccountResponse.ok) {
@@ -185,8 +152,7 @@ export const criticalMessageHandler = async (message: CriticalQueueMessage) => {
             const bankRateResponse = await fetch(process.env.BANK_RATE_UPDATE_URL!, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' ,'Client-Id': 'thoh',},
-                body: JSON.stringify({ primeRate, simulationDate, simulationTime }),
-                ...httpClientOptions
+                body: JSON.stringify({ primeRate, simulationDate, simulationTime })
             });
 
             if (!bankRateResponse.ok) {
@@ -214,8 +180,7 @@ export const businessMessageHandler = async (message: BusinessQueueMessage) => {
                 body: JSON.stringify({
                     account_number: accountNumber,
                     items: [{ name: phoneName, quantity: quantity || 1 }]
-                }),
-                ...httpClientOptions
+                })
             });
 
             if (!purchaseResponse.ok) {
@@ -230,8 +195,7 @@ export const businessMessageHandler = async (message: BusinessQueueMessage) => {
             const recycleResponse = await fetch(process.env.RECYCLER_API_URL!, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json','Client-Id': 'thoh', },
-                body: JSON.stringify({ quantity: recycleQuantity }),
-                ...httpClientOptions
+                body: JSON.stringify({ quantity: recycleQuantity })
             });
 
             if (!recycleResponse.ok) {
@@ -269,8 +233,7 @@ export const notificationMessageHandler = async (message: NotificationQueueMessa
                         failureQuantity,
                         simulationDate,
                         simulationTime
-                    }),
-                    ...httpClientOptions
+                    })
                 });
 
                 if (!response.ok) {
@@ -293,8 +256,7 @@ export const notificationMessageHandler = async (message: NotificationQueueMessa
                 const response = await fetch(url.trim(), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' ,'Client-Id': 'thoh',},
-                    body: JSON.stringify({ epochStartTime }),
-                    ...httpClientOptions
+                    body: JSON.stringify({ epochStartTime })
                 });
 
                 if (!response.ok) {
