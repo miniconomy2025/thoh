@@ -25,11 +25,18 @@ jobs:
           ssh -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" \
             ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "sudo reboot" || true
 
-          echo "🕒 Waiting for EC2 to come back online..."
-          for i in {1..60}; do        # up to 10 minutes
+          echo "🕒 Waiting for SSH port (22) to become available..."
+          for i in {1..60}; do  # 60 x 10s = 10 minutes
             sleep 10
-            ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -i "~/.ssh/id_rsa" \
-              ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "echo '✅ EC2 is back online'" >/dev/null 2>&1 && break
+            if nc -z ${{ vars.EC2_HOST }} 22 2>/dev/null; then
+              echo "✅ Port 22 is open, testing SSH..."
+              if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -i "~/.ssh/id_rsa" \
+                ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "echo '✅ EC2 is back online'" >/dev/null 2>&1; then
+                echo "✅ EC2 instance is back online."
+                break
+              fi
+            fi
+
             echo "⏳ Waiting for EC2 to finish rebooting... ($i/60)"
             if [ $i -eq 60 ]; then
               echo "❌ EC2 instance did not come back online in time."
@@ -37,7 +44,7 @@ jobs:
             fi
           done
 
-          echo "✅ EC2 instance is back online."
+          echo "✅ EC2 instance is fully reachable and ready."
 
       - name: Upload application files
         run: |
