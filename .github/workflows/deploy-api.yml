@@ -55,7 +55,7 @@ jobs:
 
           echo "--- Starting frontend with PM2 ---"
           pm2 delete frontend || true
-          pm2 start "npm run preview -- --port $FRONTEND_PORT" --name frontend
+          pm2 start "npm run preview -- --port 4173" --name frontend
           pm2 save
 
           echo "--- Installing backend dependencies ---"
@@ -143,7 +143,7 @@ jobs:
               ssl_ciphers         HIGH:!aNULL:!MD5;
 
               location / {
-                  proxy_pass http://localhost:$FRONTEND_PORT;
+                  proxy_pass http://localhost:4173;
                   proxy_http_version 1.1;
                   proxy_set_header Upgrade \$http_upgrade;
                   proxy_set_header Connection upgrade;
