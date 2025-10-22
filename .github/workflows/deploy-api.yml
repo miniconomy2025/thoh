@@ -24,7 +24,7 @@ jobs:
           echo "🔄 Rebooting EC2 instance..."
           ssh -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" \
             ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "sudo reboot" || true
-          
+
           echo "🕒 Waiting for EC2 to come back online..."
           for i in {1..30}; do
             sleep 10
@@ -45,6 +45,9 @@ jobs:
           scp -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" -r api frontend \
             ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/thoh
 
+
+      - name: Upload deployment script
+        run: |
           cat <<'EOF' > run.sh
           #!/bin/bash
           set -e
@@ -67,7 +70,12 @@ jobs:
           npm install --omit=dev
           npm install rollup --force
           npm rebuild rollup
-                
+          
+          
+          echo "--- Building backend ---"
+          cd $APP_DIR/api
+          npm run build
+          
           echo "--- Building frontend ---"
           npm run build
 
@@ -124,7 +132,7 @@ jobs:
           echo "--- Building backend ---"
           cd $APP_DIR/api
           npm run build
-          
+
           echo "--- Starting backend with PM2 ---"
           pm2 delete $SERVICE_NAME || true
           pm2 start "npm run start" --name $SERVICE_NAME --cwd $APP_DIR/api
@@ -196,7 +204,6 @@ jobs:
             ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/run.sh
 
 
-      - name: Upload deployment script
       - name: Execute deployment script on EC2
         run: |
           ssh -tt -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" \
