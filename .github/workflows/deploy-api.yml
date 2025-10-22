@@ -23,8 +23,6 @@ jobs:
         run: |
           scp -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" -r api frontend \
             ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/thoh
-
-
       - name: Upload deployment script
         run: |
           cat <<'EOF' > run.sh
@@ -34,14 +32,14 @@ jobs:
           SERVICE_NAME="thoh"
           ENTRY_FILE="dist/main.js"
           FRONTEND_PORT=4173
-
+          
           echo "--- Installing Node.js ---"
           curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
           sudo yum install -y nodejs
-
+          
           echo "--- Installing PM2 ---"
           sudo npm install -g pm2
-
+          
           echo "--- Installing and building frontend ---"
           cd $APP_DIR/frontend
           rm -rf node_modules package-lock.json
@@ -52,16 +50,16 @@ jobs:
           
           echo "--- Building frontend ---"
           npm run build
-
+          
           echo "--- Starting frontend with PM2 ---"
           pm2 delete frontend || true
           pm2 start "npm run preview -- --port $FRONTEND_PORT" --name frontend
           pm2 save
-
+          
           echo "--- Installing backend dependencies ---"
           cd $APP_DIR/api
-          npm install --production
-
+          npm install
+          
           echo "--- Writing environment variables ---"
           cat <<ENVEOF > "$APP_DIR/api/.env"
           POSTGRES_HOST=${{ vars.POSTGRES_HOST }}
@@ -98,50 +96,42 @@ jobs:
           VITE_API_URL=${{ vars.VITE_API_URL }}
           VITE_COMMERCIAL_BANK_URL=${{ vars.VITE_COMMERCIAL_BANK_URL }}
           ENVEOF
-
+          
           echo "--- Copying .env to frontend ---"
           cp "$APP_DIR/api/.env" "$APP_DIR/frontend/.env"
-
+          
           echo "--- Starting backend with PM2 ---"
           pm2 delete $SERVICE_NAME || true
           pm2 start "npm run start" --name $SERVICE_NAME --cwd $APP_DIR/api
           pm2 save
-
+          
           echo "--- Installing and configuring NGINX ---"
           sudo yum install -y nginx openssl
           sudo systemctl enable nginx
-
           CERT_DIR="/etc/nginx/ssl"
           sudo mkdir -p $CERT_DIR
-
           sudo openssl req -x509 -nodes -days 365 \
             -newkey rsa:2048 \
             -keyout $CERT_DIR/selfsigned.key \
             -out $CERT_DIR/selfsigned.crt \
             -subj "/C=US/ST=Test/L=Test/O=Test/OU=Test/CN=${{ vars.EC2_HOST }}"
-
           NGINX_CONF="/etc/nginx/conf.d/thoh.conf"
-
+          
           sudo tee $NGINX_CONF > /dev/null <<NGINXEOF
           server {
               listen 80;
               server_name _;
-
               location / {
                   return 301 https://\$host\$request_uri;
               }
           }
-
           server {
               listen 443 ssl;
               server_name _;
-
               ssl_certificate     $CERT_DIR/selfsigned.crt;
               ssl_certificate_key $CERT_DIR/selfsigned.key;
-
               ssl_protocols       TLSv1.2 TLSv1.3;
               ssl_ciphers         HIGH:!aNULL:!MD5;
-
               location / {
                   proxy_pass http://localhost:$FRONTEND_PORT;
                   proxy_http_version 1.1;
@@ -150,7 +140,6 @@ jobs:
                   proxy_set_header Host \$host;
                   proxy_cache_bypass \$http_upgrade;
               }
-
               location /api/ {
                   proxy_pass http://localhost:3000/;
                   proxy_http_version 1.1;
@@ -161,18 +150,13 @@ jobs:
               }
           }
           NGINXEOF
-
           echo "--- Restarting NGINX ---"
           sudo nginx -t && sudo systemctl restart nginx
-
           echo "✅ Deployment complete."
           pm2 list
           EOF
-
           scp -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" run.sh \
             ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/run.sh
-
-
       - name: Execute deployment script on EC2
         run: |
           ssh -tt -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" \
@@ -181,8 +165,6 @@ jobs:
               echo '🚀 Running deployment...'
               bash ~/run.sh 2>&1 | tee ~/deploy.log
             "
-
-
       - name: Download deploy log artifact
         run: |
           scp -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" \
