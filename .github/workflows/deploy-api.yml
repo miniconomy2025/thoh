@@ -24,7 +24,8 @@ jobs:
 
           APP_DIR="/home/${{ vars.EC2_USER }}/thoh"
           SERVICE_NAME="thoh"
-          ENTRY_FILE="dist/main.ts"
+          ENTRY_FILE="dist/main.js"  # <-- compiled JS file (not TS)
+          FRONTEND_PORT=4173
 
           echo "--- Installing Node.js ---"
           curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
@@ -37,7 +38,12 @@ jobs:
           cd $APP_DIR/frontend
           npm install
           npm run build
-          npm run dev
+
+          # Serve frontend with PM2 using Vite's preview (production mode)
+          echo "--- Starting frontend with PM2 ---"
+          pm2 delete frontend || true
+          pm2 start "npm run preview -- --port 4173" --name frontend
+          pm2 save
 
           echo "--- Installing backend dependencies ---"
           cd $APP_DIR/api
@@ -83,28 +89,10 @@ jobs:
           echo "--- Copying .env to frontend ---"
           cat "$APP_DIR/api/.env" > "$APP_DIR/frontend/.env"
 
-          echo "--- Creating systemd service ---"
-          sudo tee /etc/systemd/system/$SERVICE_NAME.service > /dev/null <<SERVICEEOF
-          [Unit]
-          Description=thoh Express App
-          After=network.target
-
-          [Service]
-          EnvironmentFile=$APP_DIR/api/.env
-          WorkingDirectory=$APP_DIR/api
-          ExecStart=/usr/bin/node $APP_DIR/api/$ENTRY_FILE
-          Restart=always
-          User=${{ vars.EC2_USER }}
-          Group=${{ vars.EC2_USER }}
-
-          [Install]
-          WantedBy=multi-user.target
-          SERVICEEOF
-
-          echo "--- Reloading and starting backend service ---"
-          sudo systemctl daemon-reload
-          sudo systemctl enable $SERVICE_NAME
-          sudo systemctl restart $SERVICE_NAME
+          echo "--- Starting backend with PM2 ---"
+          pm2 delete $SERVICE_NAME || true
+          pm2 start "npm run start" --name $SERVICE_NAME --cwd $APP_DIR/api
+          pm2 save
 
           echo "--- Installing and configuring NGINX ---"
           sudo yum install -y nginx openssl
@@ -142,7 +130,7 @@ jobs:
               ssl_ciphers         HIGH:!aNULL:!MD5;
 
               location / {
-                  proxy_pass http://localhost:4173;
+                  proxy_pass http://localhost:$FRONTEND_PORT;
                   proxy_http_version 1.1;
                   proxy_set_header Upgrade \$http_upgrade;
                   proxy_set_header Connection upgrade;
@@ -165,6 +153,8 @@ jobs:
           sudo nginx -t && sudo systemctl restart nginx
 
           echo "✅ Deployment complete."
+          echo "Use 'pm2 logs' or 'pm2 logs thoh' to view backend logs"
+          echo "Use 'pm2 logs frontend' to view frontend logs"
           EOF
 
       - name: Upload files and execute on EC2
