@@ -21,20 +21,19 @@ jobs:
 
       - name: Reboot EC2 instance before deployment
         run: |
-          echo "Rebooting EC2 instance..."
+          echo "🔄 Rebooting EC2 instance..."
           ssh -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" \
             ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "sudo reboot" || true
-
-          echo "Waiting for Instance to get back online"
-      
+          
+          echo "🕒 Waiting for EC2 to come back online..."
           for i in {1..30}; do
             sleep 10
             if ssh -o StrictHostKeyChecking=no -o ConnectTimeout=5 -i "~/.ssh/id_rsa" \
-              ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "echo '✅ EC2 is back online'" >/dev/null 2>&1; then
+               ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "echo '✅ EC2 is back online'" >/dev/null 2>&1; then
               echo "✅ EC2 instance is back online."
               break
             fi
-            echo "Waiting for EC2 to finish rebooting... ($i/30)"
+            echo "⏳ Waiting for EC2 to finish rebooting... ($i/30)"
             if [ $i -eq 30 ]; then
               echo "❌ EC2 instance did not come back online in time."
               exit 1
@@ -46,9 +45,6 @@ jobs:
           scp -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" -r api frontend \
             ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/thoh
 
-
-      - name: Upload deployment script
-        run: |
           cat <<'EOF' > run.sh
           #!/bin/bash
           set -e
@@ -71,7 +67,7 @@ jobs:
           npm install --omit=dev
           npm install rollup --force
           npm rebuild rollup
-          
+                
           echo "--- Building frontend ---"
           npm run build
 
@@ -123,7 +119,12 @@ jobs:
 
           echo "--- Copying .env to frontend ---"
           cp "$APP_DIR/api/.env" "$APP_DIR/frontend/.env"
-
+          
+          
+          echo "--- Building backend ---"
+          cd $APP_DIR/api
+          npm run build
+          
           echo "--- Starting backend with PM2 ---"
           pm2 delete $SERVICE_NAME || true
           pm2 start "npm run start" --name $SERVICE_NAME --cwd $APP_DIR/api
@@ -195,6 +196,7 @@ jobs:
             ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/run.sh
 
 
+      - name: Upload deployment script
       - name: Execute deployment script on EC2
         run: |
           ssh -tt -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" \
