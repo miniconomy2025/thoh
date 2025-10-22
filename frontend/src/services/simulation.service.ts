@@ -24,8 +24,7 @@ export type SimulationService = {
 const simulationService: SimulationService = {
   startSimulation: async function (): Promise<StartSimulationResponse | BaseApiError> {
     const response = await fetch(`${CONSTANTS.API_URL}/simulations`, {
-      method: 'POST',
-      credentials: 'include'
+      method: 'POST'
     });
 
     if (response.ok) {
@@ -120,7 +119,6 @@ const simulationService: SimulationService = {
 
   getSimulation: async function (): Promise<StartSimulationResponse | BaseApiError> {
     const response = await fetch(`${CONSTANTS.API_URL}/simulations`, {
-      credentials: 'include'
     });
 
     if (response.ok) {

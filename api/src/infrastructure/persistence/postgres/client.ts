@@ -23,12 +23,7 @@ import { Simulation } from '../../../domain/simulation/simulation.entity';
 const getSslConfig = () => {
   if (process.env.NODE_ENV === 'production') {
     return {
-      ssl: {
-        rejectUnauthorized: false,
-        ca: process.env.POSTGRES_CA,
-        key: process.env.POSTGRES_KEY,
-        cert: process.env.POSTGRES_CERT,
-      }
+      ssl: false
     };
   }
   return {
@@ -56,7 +51,7 @@ export const AppDataSource = new DataSource({
   database: process.env.POSTGRES_DB,
   synchronize: false,
   logging: true,
-  ssl: process.env.NODE_ENV === 'production',
+  ssl: false,
   entities: [
     Person, Phone, PhoneStatic, MaterialStatic, Machine, MachineStatic, 
     MachineMaterialRatio, Equipment, Truck, VehicleStatic, RawMaterial, 
