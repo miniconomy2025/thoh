@@ -42,9 +42,15 @@ jobs:
           echo "--- Installing PM2 ---"
           sudo npm install -g pm2
 
-          echo "--- Installing frontend dependencies ---"
+          echo "--- Installing and building frontend ---"
           cd $APP_DIR/frontend
-          npm install
+          rm -rf node_modules package-lock.json
+          npm cache clean --force
+          npm install --omit=dev
+          npm install rollup --force
+          npm rebuild rollup
+          
+          echo "--- Building frontend ---"
           npm run build
 
           echo "--- Starting frontend with PM2 ---"
