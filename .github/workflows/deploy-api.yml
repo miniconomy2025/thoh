@@ -8,23 +8,31 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
 
-      - name: Setup SSH Key
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+
+      - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      - name: Create run.sh
+      - name: Upload application files
+        run: |
+          scp -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" -r api frontend \
+            ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/thoh
+
+
+      - name: Upload deployment script
         run: |
           cat <<'EOF' > run.sh
           #!/bin/bash
           set -e
-
           APP_DIR="/home/${{ vars.EC2_USER }}/thoh"
           SERVICE_NAME="thoh"
-          ENTRY_FILE="dist/main.js"  # <-- compiled JS file (not TS)
+          ENTRY_FILE="dist/main.js"
           FRONTEND_PORT=4173
 
           echo "--- Installing Node.js ---"
@@ -34,22 +42,21 @@ jobs:
           echo "--- Installing PM2 ---"
           sudo npm install -g pm2
 
-          echo "--- Installing and building frontend ---"
+          echo "--- Installing frontend dependencies ---"
           cd $APP_DIR/frontend
           npm install
           npm run build
 
-          # Serve frontend with PM2 using Vite's preview (production mode)
           echo "--- Starting frontend with PM2 ---"
           pm2 delete frontend || true
-          pm2 start "npm run preview -- --port 4173" --name frontend
+          pm2 start "npm run preview -- --port $FRONTEND_PORT" --name frontend
           pm2 save
 
           echo "--- Installing backend dependencies ---"
           cd $APP_DIR/api
           npm install --production
-          
-          echo "--- Writing .env ---"
+
+          echo "--- Writing environment variables ---"
           cat <<ENVEOF > "$APP_DIR/api/.env"
           POSTGRES_HOST=${{ vars.POSTGRES_HOST }}
           POSTGRES_PORT=${{ vars.POSTGRES_PORT }}
@@ -85,9 +92,9 @@ jobs:
           VITE_API_URL=${{ vars.VITE_API_URL }}
           VITE_COMMERCIAL_BANK_URL=${{ vars.VITE_COMMERCIAL_BANK_URL }}
           ENVEOF
-          
+
           echo "--- Copying .env to frontend ---"
-          cat "$APP_DIR/api/.env" > "$APP_DIR/frontend/.env"
+          cp "$APP_DIR/api/.env" "$APP_DIR/frontend/.env"
 
           echo "--- Starting backend with PM2 ---"
           pm2 delete $SERVICE_NAME || true
@@ -130,7 +137,7 @@ jobs:
               ssl_ciphers         HIGH:!aNULL:!MD5;
 
               location / {
-                  proxy_pass http://localhost:4173;
+                  proxy_pass http://localhost:$FRONTEND_PORT;
                   proxy_http_version 1.1;
                   proxy_set_header Upgrade \$http_upgrade;
                   proxy_set_header Connection upgrade;
@@ -153,16 +160,31 @@ jobs:
           sudo nginx -t && sudo systemctl restart nginx
 
           echo "✅ Deployment complete."
-          echo "Use 'pm2 logs' or 'pm2 logs thoh' to view backend logs"
-          echo "Use 'pm2 logs frontend' to view frontend logs"
+          pm2 list
           EOF
 
-      - name: Upload files and execute on EC2
+          scp -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" run.sh \
+            ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/run.sh
+
+
+      - name: Execute deployment script on EC2
         run: |
-          scp -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" run.sh ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/run.sh
-          scp -r -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" api frontend ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/thoh
-          ssh -o StrictHostKeyChecking=no \
-              -o ServerAliveInterval=60 \
-              -o ServerAliveCountMax=30 \
-              -i "~/.ssh/id_rsa" \
-              ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "chmod +x ~/run.sh && nohup ~/run.sh > ~/deploy.log 2>&1 &"
+          ssh -tt -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" \
+            ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "
+              chmod +x ~/run.sh
+              echo '🚀 Running deployment...'
+              bash ~/run.sh 2>&1 | tee ~/deploy.log
+            "
+
+
+      - name: Download deploy log artifact
+        run: |
+          scp -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" \
+            ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/deploy.log .
+        continue-on-error: true
+
+      - name: Upload deploy log to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: ec2-deploy-log
+          path: deploy.log
