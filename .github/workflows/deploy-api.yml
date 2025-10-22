@@ -82,7 +82,7 @@ jobs:
 
           echo "--- Installing backend dependencies ---"
           cd $APP_DIR/api
-          npm install --production
+          npm install
 
           echo "--- Writing environment variables ---"
           cat <<ENVEOF > "$APP_DIR/api/.env"
