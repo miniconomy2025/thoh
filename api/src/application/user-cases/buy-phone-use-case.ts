@@ -13,7 +13,7 @@ export class BuyPhoneUseCase {
 
       const usePear = Math.random() % 2 === 0;
       const model = this.getRandomModel(usePear);
-      const apiUrl = usePear ? 'https://pear-company-api.projects.bbdgrad.com' : 'https://sumsang-phones-api.projects.bbdgrad.com';
+      const apiUrl = usePear ? 'https://pear-api.duckdns.org/public-api' : 'https://www.bbd-grad-project.co.za/public-api';
 
       const success = await this.createOrder(person, model, apiUrl);
       if (!success) break;
