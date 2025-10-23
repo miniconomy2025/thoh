@@ -4,7 +4,7 @@ import type { People } from "../lib/types/people.types";
 import type { RawMaterial } from "../lib/types/rawMaterials.types";
 import type { BaseApiError } from "../lib/types/shared.types";
 import type { EntityInfoResponse, SimulationInfoResponse, StartSimulationResponse, StopSimulationResponse } from "../lib/types/simulation.types";
-import type { EpochTimeResponse, SimulationTime, SimulationTimeResponse } from "../lib/types/time.types";
+import type { SimulationTime, SimulationTimeResponse } from "../lib/types/time.types";
 import type { Truck } from "../lib/types/truck.types";
 
 export type SimulationService = {
@@ -24,8 +24,7 @@ export type SimulationService = {
 const simulationService: SimulationService = {
   startSimulation: async function (): Promise<StartSimulationResponse | BaseApiError> {
     const response = await fetch(`${CONSTANTS.API_URL}/simulations`, {
-      method: 'POST',
-      credentials: 'include'
+      method: 'POST'
     });
 
     if (response.ok) {
@@ -120,7 +119,6 @@ const simulationService: SimulationService = {
 
   getSimulation: async function (): Promise<StartSimulationResponse | BaseApiError> {
     const response = await fetch(`${CONSTANTS.API_URL}/simulations`, {
-      credentials: 'include'
     });
 
     if (response.ok) {

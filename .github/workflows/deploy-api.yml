@@ -1,41 +1,67 @@
 name: Deploy Express App to EC2
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Setup Key
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+
+      - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      - name: Copying stuff over
+      - name: Upload application files
         run: |
-          scp -r -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" api ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/thoh
-
-          ssh -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "cat > /home/${{ vars.EC2_USER }}/run.sh <<'EOF'
+          scp -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" -r api frontend \
+            ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/thoh
+      - name: Upload deployment script
+        run: |
+          cat <<'EOF' > run.sh
           #!/bin/bash
           set -e
-          APP_DIR=\"/home/${{ vars.EC2_USER }}/thoh\"
-          SERVICE_NAME=\"thoh\"
-          ENTRY_FILE=\"dist/main.ts\"
-
-          echo \"--- Installing Node.js (v18 LTS) ---\"
+          APP_DIR="/home/${{ vars.EC2_USER }}/thoh"
+          SERVICE_NAME="thoh"
+          ENTRY_FILE="dist/main.js"
+          FRONTEND_PORT=4173
+          
+          echo "--- Installing Node.js ---"
           curl -fsSL https://rpm.nodesource.com/setup_20.x | sudo bash -
           sudo yum install -y nodejs
-
-          echo \"--- Moving to \$APP_DIR and installing dependencies ---\"
-          cd \$APP_DIR
-          npm install --production
-
-          echo \"--- Writing .env file ---\"
-          cat <<ENVEOF > \"\$APP_DIR/.env\"
+          
+          echo "--- Installing PM2 ---"
+          sudo npm install -g pm2
+          
+          echo "--- Installing and building frontend ---"
+          cd $APP_DIR/frontend
+          rm -rf node_modules package-lock.json
+          npm cache clean --force
+          npm install --omit=dev
+          npm install rollup --force
+          npm rebuild rollup
+          
+          echo "--- Building frontend ---"
+          npm run build
+          
+          echo "--- Starting frontend with PM2 ---"
+          pm2 delete frontend || true
+          pm2 start "npm run preview -- --port $FRONTEND_PORT" --name frontend
+          pm2 save
+          
+          echo "--- Installing backend dependencies ---"
+          cd $APP_DIR/api
+          npm install
+          
+          echo "--- Writing environment variables ---"
+          cat <<ENVEOF > "$APP_DIR/api/.env"
           POSTGRES_HOST=${{ vars.POSTGRES_HOST }}
           POSTGRES_PORT=${{ vars.POSTGRES_PORT }}
           POSTGRES_DB=${{ vars.POSTGRES_DB }}
@@ -59,129 +85,94 @@ jobs:
           COMMERCIAL_BANK_ACCOUNTS_URL=${{ secrets.COMMERCIAL_BANK_ACCOUNTS_URL }}
           APPLICATION_NAME=${{ vars.APPLICATION_NAME }}
           REST_BASE_PATH=${{ vars.REST_BASE_PATH }}
-          API_BASEURL=${{ vars.EC2_HOST }}${{ vars.REST_BASE_PATH }}
+          NODE_ENV=${{ vars.NODE_ENV }}
+          COMMERCIAL_BANK_URL=${{ vars.COMMERCIAL_BANK_URL }}
+          API_BASEURL=https://${{ vars.EC2_HOST }}${{ vars.REST_BASE_PATH }}
+          BULK_LOGISTICS_API_URL=${{ vars.BULK_LOGISTICS_API_URL}}
+          CONSUMER_LOGISTICS_API_URL=${{ vars.CONSUMER_LOGISTICS_API_URL }}
+          POSTGRES_CA=${{ vars.POSTGRES_CA }}
+          POSTGRES_KEY=${{ vars.POSTGRES_KEY }}
+          POSTGRES_CERT=${{ vars.POSTGRES_CERT }}
+          VITE_API_URL=${{ vars.VITE_API_URL }}
+          VITE_COMMERCIAL_BANK_URL=${{ vars.VITE_COMMERCIAL_BANK_URL }}
           ENVEOF
-
-          chmod 600 \"\$APP_DIR/.env\"
-
-          echo \"--- Creating systemd service ---\"
-          sudo bash -c \"cat > /etc/systemd/system/\$SERVICE_NAME.service\" <<SERVICEEOF
-          [Unit]
-          Description=thoh Express App
-          After=network.target
-
-          [Service]
-          EnvironmentFile=\$APP_DIR/.env
-          WorkingDirectory=\$APP_DIR
-          ExecStart=/usr/bin/node \$APP_DIR/\$ENTRY_FILE
-          Restart=always
-          User=${{ vars.EC2_USER }}
-          Group=${{ vars.EC2_USER }}
-
-          [Install]
-          WantedBy=multi-user.target
-          SERVICEEOF
-
-          echo \"--- Reloading systemd and starting service ---\"
-          sudo systemctl daemon-reload
-          sudo systemctl enable \$SERVICE_NAME
-          sudo systemctl restart \$SERVICE_NAME
-
-          echo \"--- Installing and configuring NGINX ---\"
-          sudo yum install -y nginx
+          
+          echo "--- Copying .env to frontend ---"
+          cp "$APP_DIR/api/.env" "$APP_DIR/frontend/.env"
+          
+          echo "--- Starting backend with PM2 ---"
+          pm2 delete $SERVICE_NAME || true
+          pm2 start "npm run start" --name $SERVICE_NAME --cwd $APP_DIR/api
+          pm2 save
+          
+          echo "--- Installing and configuring NGINX ---"
+          sudo yum install -y nginx openssl
           sudo systemctl enable nginx
-
-          CERT_DIR=\"/etc/nginx/ssl\"
-          SERVER_CERT_PATH=\"\$CERT_DIR/server.crt\"
-          SERVER_KEY_PATH=\"\$CERT_DIR/server.key\"
-          CA_CERT_PATH=\"\$CERT_DIR/ca.crt\"
-          NGINX_CONF=\"/etc/nginx/conf.d/thoh.conf\"
-          DOMAIN=\"thoh-api.projects.bbdgrad.com\"
-
-          SERVER_CERT=\"${{ secrets.SERVER_CERT }}\"
-          SERVER_KEY=\"${{ secrets.SERVER_KEY }}\"
-          CA_CERT=\"${{ secrets.CA_CERT }}\"
-          EC2_HOST=\"${{ vars.EC2_HOST }}\"
-
-          sudo mkdir -p \"\$CERT_DIR\"
-          sudo chmod 700 \"\$CERT_DIR\"
-
-          echo \"\$SERVER_CERT\" | sudo tee \"\$SERVER_CERT_PATH\" > /dev/null
-          echo \"\$SERVER_KEY\" | sudo tee \"\$SERVER_KEY_PATH\" > /dev/null
-          echo \"\$CA_CERT\"    | sudo tee \"\$CA_CERT_PATH\"    > /dev/null
-          sudo chmod 600 \"\$SERVER_CERT_PATH\" \"\$SERVER_KEY_PATH\" \"\$CA_CERT_PATH\"
-
-          sudo bash -c \"cat > \$NGINX_CONF\" <<NGINXEOF
-          # =========================================
-          # HTTP Redirect (port 80 → 443)
-          # =========================================
+          CERT_DIR="/etc/nginx/ssl"
+          sudo mkdir -p $CERT_DIR
+          sudo openssl req -x509 -nodes -days 365 \
+            -newkey rsa:2048 \
+            -keyout $CERT_DIR/selfsigned.key \
+            -out $CERT_DIR/selfsigned.crt \
+            -subj "/C=US/ST=Test/L=Test/O=Test/OU=Test/CN=${{ vars.EC2_HOST }}"
+          NGINX_CONF="/etc/nginx/conf.d/thoh.conf"
+          
+          sudo tee $NGINX_CONF > /dev/null <<NGINXEOF
           server {
               listen 80;
-              server_name thoh.projects.bbdgrad.com thoh-api.projects.bbdgrad.com;
-
+              server_name _;
               location / {
-                  return 301 https://$host$request_uri;
+                  return 301 https://\$host\$request_uri;
               }
           }
-
-          # =========================================
-          # FRONTEND: https://thoh.projects.bbdgrad.com
-          # =========================================
           server {
               listen 443 ssl;
-              server_name thoh.projects.bbdgrad.com;
-
-              ssl_certificate     \$SERVER_CERT_PATH;
-              ssl_certificate_key \$SERVER_KEY_PATH;
-              ssl_client_certificate \$CA_CERT_PATH;
-
-              ssl_protocols       TLSv1.3;
+              server_name _;
+              ssl_certificate     $CERT_DIR/selfsigned.crt;
+              ssl_certificate_key $CERT_DIR/selfsigned.key;
+              ssl_protocols       TLSv1.2 TLSv1.3;
               ssl_ciphers         HIGH:!aNULL:!MD5;
-
-              ssl_verify_client   off;
-
               location / {
-                  proxy_pass http://localhost:4173;
+                  proxy_pass http://localhost:$FRONTEND_PORT;
                   proxy_http_version 1.1;
-                  proxy_set_header Upgrade \\\$http_upgrade;
-                  proxy_set_header Connection 'upgrade';
-                  proxy_set_header Host \\\$host;
-                  proxy_cache_bypass \\\$http_upgrade;
+                  proxy_set_header Upgrade \$http_upgrade;
+                  proxy_set_header Connection upgrade;
+                  proxy_set_header Host \$host;
+                  proxy_cache_bypass \$http_upgrade;
               }
-          }
-
-          # =========================================
-          # API: https://thoh-api.projects.bbdgrad.com
-          # =========================================
-          server {
-              listen 443 ssl;
-              server_name thoh-api.projects.bbdgrad.com;
-
-              ssl_certificate     \$SERVER_CERT_PATH;
-              ssl_certificate_key \$SERVER_KEY_PATH;
-              ssl_client_certificate \$CA_CERT_PATH;
-
-              ssl_protocols       TLSv1.3;
-              ssl_ciphers         HIGH:!aNULL:!MD5;
-              ssl_verify_client   optional;
-
-              location / {
-                  proxy_pass http://localhost:3000;
+              location /api/ {
+                  proxy_pass http://localhost:3000/;
                   proxy_http_version 1.1;
-                  proxy_set_header Upgrade \\\$http_upgrade;
-                  proxy_set_header Connection 'upgrade';
-                  proxy_set_header Host \\\$host;
-                  proxy_cache_bypass \\\$http_upgrade;
+                  proxy_set_header Upgrade \$http_upgrade;
+                  proxy_set_header Connection upgrade;
+                  proxy_set_header Host \$host;
+                  proxy_cache_bypass \$http_upgrade;
               }
           }
           NGINXEOF
-
-          echo \"Testing and restarting NGINX...\"
+          echo "--- Restarting NGINX ---"
           sudo nginx -t && sudo systemctl restart nginx
-
-          echo \"✅ Express app deployed and running behind NGINX.\"
-          EOF"
-
-      - name: Run run.sh on EC2
+          echo "✅ Deployment complete."
+          pm2 list
+          EOF
+          scp -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" run.sh \
+            ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/run.sh
+      - name: Execute deployment script on EC2
         run: |
-          ssh -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "chmod +x ~/run.sh && ~/run.sh"
+          ssh -tt -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" \
+            ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }} "
+              chmod +x ~/run.sh
+              echo '🚀 Running deployment...'
+              bash ~/run.sh 2>&1 | tee ~/deploy.log
+            "
+      - name: Download deploy log artifact
+        run: |
+          scp -o StrictHostKeyChecking=no -i "~/.ssh/id_rsa" \
+            ${{ vars.EC2_USER }}@${{ vars.EC2_HOST }}:/home/${{ vars.EC2_USER }}/deploy.log .
+        continue-on-error: true
+
+      - name: Upload deploy log to GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: ec2-deploy-log
+          path: deploy.log

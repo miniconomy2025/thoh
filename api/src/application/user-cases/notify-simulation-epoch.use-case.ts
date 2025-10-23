@@ -2,7 +2,6 @@ import { Simulation } from '../../domain/simulation/simulation.aggregate';
 import { epochNotificationConfig } from '../../infrastructure/config/epoch-notification.config';
 import { fetch } from 'undici';
 import fs from 'fs';
-import { Agent } from 'undici';
 import path from "node:path";
 
 export class NotifySimulationEpochUseCase {
@@ -14,26 +13,6 @@ export class NotifySimulationEpochUseCase {
             
             let fetchOptions = {};
             
-            // Only try to use SSL in production
-            if (process.env.NODE_ENV === 'production') {
-                try {
-                    const certPath = path.join(__dirname, 'thoh-client.crt');
-                    const keyPath = path.join(__dirname, 'thoh-client.key');
-                    
-                    if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
-                        const agent = new Agent({
-                            connect: {
-                                cert: fs.readFileSync(certPath),
-                                key: fs.readFileSync(keyPath),
-                                rejectUnauthorized: false
-                            }
-                        });
-                        fetchOptions = { dispatcher: agent };
-                    }
-                } catch (error) {
-                    console.warn('SSL certificates not found, using regular HTTP');
-                }
-            }
             
             const notificationEvent = {
                 epochStartTime: epochTime
@@ -44,7 +23,8 @@ export class NotifySimulationEpochUseCase {
                     const response = await fetch(targetUrl, {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json'
+                            'Content-Type': 'application/json',
+                            'Client-Id': 'thoh'
                         },
                         body: JSON.stringify(notificationEvent),
                         ...fetchOptions

@@ -8,24 +8,14 @@ export class NotifyEndSimulationUseCase {
 
     async execute(): Promise<void> {
         try {
-
-            const agent = new Agent({
-                connect: {
-                    cert : fs.readFileSync(path.join(__dirname, 'thoh-client.crt')),
-                    key : fs.readFileSync(path.join(__dirname, 'thoh-client.key')),
-                    ca : fs.readFileSync(path.join(__dirname, 'root-ca.crt')),
-                    rejectUnauthorized: false
-                }
-            });
-
             const sendPromises = endSimulationNotificationConfig.endSimulationNotificationUrls.map(async (targetUrl: string) => {
                 try {
                     const response = await fetch(targetUrl, {
                         method: 'DELETE',
                         headers: {
-                            'Content-Type': 'application/json'
+                            'Content-Type': 'application/json',
+                            'Client-Id': 'thoh'
                         },
-                        dispatcher: agent
                     });
 
                     if (!response.ok) {
