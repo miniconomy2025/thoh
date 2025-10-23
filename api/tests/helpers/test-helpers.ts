@@ -60,13 +60,19 @@ export const createPhone = (overrides: Partial<Phone> = {}): Phone => {
 }
 
 export const createPerson = (overrides: Partial<Person> = {}): Person => {
+  // Handle undefined salary by creating a person with a default salary first, then overriding
+  const defaultSalary = overrides.salary !== undefined ? overrides.salary : 50000
   const person = new Person(
-    overrides.salary ?? 50000,
+    defaultSalary,
     overrides.phone ?? null,
     overrides.isAlive ?? true,
     overrides.accountNumber ?? null
   )
   if (overrides.id) person.id = overrides.id
+  // If salary was explicitly undefined, set it to undefined after construction
+  if (overrides.salary === undefined) {
+    (person as any)._salary = undefined
+  }
   return person
 }
 

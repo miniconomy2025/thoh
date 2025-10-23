@@ -10,7 +10,7 @@ export class CreateAccountUseCase {
   async execute(): Promise<void> {
     if (!this.person.accountNumber) {
       // Validate required fields
-      if (!this.person.id || !this.person.salary) {
+      if (!this.person.id || this.person.salary === undefined || this.person.salary === null) {
         console.error('Cannot create account: person ID or salary is missing', {
           id: this.person.id,
           salary: this.person.salary
