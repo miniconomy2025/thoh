@@ -136,8 +136,8 @@ export const createCollection = (overrides: Partial<Collection> = {}): Collectio
   collection.orderId = overrides.orderId ?? 1
   collection.itemName = overrides.itemName ?? 'Test Item'
   collection.itemId = overrides.itemId ?? 1
-  collection.quantity = overrides.quantity ?? 10
-  collection.amountCollected = overrides.amountCollected ?? 0
+  collection.quantity = overrides.quantity !== undefined ? overrides.quantity : 10
+  collection.amountCollected = overrides.amountCollected !== undefined ? overrides.amountCollected : 0
   collection.orderDate = overrides.orderDate ?? new Date('2024-01-01')
   collection.collected = overrides.collected ?? false
   collection.collectionDate = overrides.collectionDate !== undefined ? overrides.collectionDate : null
