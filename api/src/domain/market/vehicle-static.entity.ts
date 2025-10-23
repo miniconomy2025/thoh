@@ -5,12 +5,12 @@ export class VehicleStatic {
     @PrimaryGeneratedColumn()
     id!: number;
 
-    @Column({ unique: true })
+    @Column({ type: "varchar", unique: true })
     name!: string;
 
     @Column({ type: 'text', nullable: true })
     description?: string;
 
-    @Column({ nullable: true })
+    @Column({ type: "int", nullable: true })
     vehicle_id?: number;
 } 

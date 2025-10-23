@@ -5,7 +5,7 @@ export class Truck {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ nullable: true })
+  @Column({ type: "int", nullable: true })
   vehicle_static_id?: number;
 
   @Column("decimal", { precision: 12, scale: 2 })
@@ -17,9 +17,9 @@ export class Truck {
   @Column("decimal", { precision: 12, scale: 2 })
   operatingCostPerDay!: number;
 
-  @Column({ default: false })
+  @Column({ type: "boolean", default: false })
   sold!: boolean;
 
-  @Column({ default: 1 })
+  @Column({ type: "int", default: 1 })
   quantity!: number;
 } 

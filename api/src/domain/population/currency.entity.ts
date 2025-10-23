@@ -2,9 +2,9 @@ import { Entity, PrimaryColumn, Column } from "typeorm";
 
 @Entity({ name: "currency" })
 export class Currency {
-    @PrimaryColumn()
+    @PrimaryColumn({ type: "varchar" })
     code!: string;
 
-    @Column({ nullable: true })
+    @Column({ type: "text", nullable: true })
     description?: string;
 } 

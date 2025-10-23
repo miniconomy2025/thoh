@@ -6,7 +6,7 @@ export class RawMaterial {
     @PrimaryGeneratedColumn()
     id!: number;
 
-    @Column({ nullable: true })
+    @Column({ type: "int", nullable: true })
     material_static_id?: number;
 
     @Column("decimal", { precision: 12, scale: 2 })
@@ -15,8 +15,8 @@ export class RawMaterial {
     @Column("decimal", { precision: 12, scale: 2 })
     availableWeight!: number;
 
-    constructor(material_static_id: number, costPerKg: number, availableWeight: number) {
-        this.material_static_id = material_static_id;
+    constructor(material_static_id: number | null | undefined, costPerKg: number, availableWeight: number) {
+        this.material_static_id = material_static_id ?? undefined;
         this.costPerKg = costPerKg;
         this.availableWeight = availableWeight;
     }

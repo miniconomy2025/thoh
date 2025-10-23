@@ -5,7 +5,7 @@ export class MachineMaterialRatio {
     @PrimaryGeneratedColumn()
     id!: number;
 
-    @Column()
+    @Column({ type: "int" })
     machine_static_id!: number;
 
     @Column({ type: 'numeric', nullable: true })

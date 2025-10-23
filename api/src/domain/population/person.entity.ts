@@ -14,7 +14,7 @@ export class Person {
   @JoinColumn({ name: 'phoneId' })
   phone: Phone | null;
 
-  @Column({ default: true })
+  @Column({ type: "boolean", default: true })
   isAlive: boolean;
 
   @Column({ name: 'accountNumber', nullable: true, unique: true, type: 'varchar' })

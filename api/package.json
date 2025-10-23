@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
     "dev": "nodemon --watch src --ext ts --exec ts-node src/main.ts",
     "start": "npm run typeorm -- migration:run --dataSource src/domain/shared/data-source.ts && ts-node src/main.ts",
     "typeorm": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js",
@@ -32,6 +35,7 @@
     "tsconfig-paths": "^4.2.0",
     "typeorm": "^0.3.25",
     "undici": "^7.11.0",
+    "vitest": "^3.2.4",
     "zod": "^4.0.2"
   },
   "devDependencies": {

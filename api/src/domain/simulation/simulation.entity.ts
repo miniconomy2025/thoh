@@ -8,10 +8,10 @@ export class Simulation {
   @Column({ type: 'int', unique: true, generated: 'increment' })
   simulationId!: number;
 
-  @Column({ default: 'not_started' })
+  @Column({ type: "varchar", default: 'not_started' })
   status!: string;
 
-  @Column({ default: 0 })
+  @Column({ type: "int", default: 0 })
   currentDay!: number;
 
   @Column({ type: 'timestamptz' })

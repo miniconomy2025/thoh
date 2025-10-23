@@ -5,7 +5,7 @@ export class Machine {
     @PrimaryGeneratedColumn()
     id!: number;
 
-    @Column({ nullable: true })
+    @Column({ type: "int", nullable: true })
     machine_static_id?: number;
 
     @Column("decimal", { precision: 12, scale: 2 })
@@ -14,16 +14,16 @@ export class Machine {
     @Column("decimal", { precision: 12, scale: 2 })
     weight!: number;
 
-    @Column()
+    @Column({ type: "varchar" })
     materialRatio!: string;
 
-    @Column()
+    @Column({ type: "int" })
     productionRate!: number;
 
-    @Column()
+    @Column({ type: "int" })
     quantity!: number;
 
-    @Column({ default: false })
+    @Column({ type: "boolean", default: false })
     sold!: boolean;
 }
 
