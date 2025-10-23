@@ -5,13 +5,13 @@ export class Collection {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column()
+  @Column({ type: "int" })
   orderId!: number;
 
-  @Column()
+  @Column({ type: "varchar" })
   itemName!: string;
 
-  @Column()
+  @Column({ type: "int" })
   itemId!: number;
 
   @Column("decimal", { precision: 12, scale: 2 })
@@ -20,12 +20,12 @@ export class Collection {
   @Column("decimal", { precision: 12, scale: 2 })
   amountCollected!: number;
 
-  @Column()
+  @Column({ type: "timestamp" })
   orderDate!: Date;
 
-  @Column()
+  @Column({ type: "boolean" })
   collected!: boolean;
 
-  @Column({ nullable: true })
+  @Column({ type: "timestamp", nullable: true })
   collectionDate?: Date;
 } 

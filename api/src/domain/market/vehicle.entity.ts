@@ -17,9 +17,9 @@ export class Truck {
   @Column("decimal", { precision: 12, scale: 2 })
   operatingCostPerDay!: number;
 
-  @Column({ default: false })
+  @Column({ type: "boolean", default: false })
   sold!: boolean;
 
-  @Column({ default: 1 })
+  @Column({ type: "int", default: 1 })
   quantity!: number;
 } 

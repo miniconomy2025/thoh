@@ -7,7 +7,7 @@ export class Population {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({ nullable: true })
+  @Column({ type: "int", nullable: true })
   simulationId?: number;
 
   @ManyToOne(() => Simulation, { nullable: true })

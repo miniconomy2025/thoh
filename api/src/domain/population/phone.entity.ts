@@ -10,6 +10,6 @@ export class Phone {
     @JoinColumn({ name: "modelId" })
     model!: PhoneStatic;
 
-    @Column({ default: false })
+    @Column({ type: "boolean", default: false })
     isBroken!: boolean;
 }
