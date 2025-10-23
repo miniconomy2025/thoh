@@ -12,7 +12,7 @@ export class ExternalsService {
       return response;
   }
   async notifyRecyclersMachineData(data:any) {
-    const response = await this.baseService.post(`${process.env.RECYCLER_API_URL}/machine-payment/notify-me`, data);
+    const response = await this.baseService.post(`${process.env.RECYCLER_API_URL}machine-payment-confirmation`, data);
     return response;
   }
 

@@ -44,7 +44,7 @@ export class GetMachinesUseCase {
             const totalQuantity = machineList.reduce((sum, item) => sum + item.machine.quantity, 0);
             const materialRatio = machineList[0].machine.materialRatio;
             const totalProductionRate = machineList.reduce((sum, item) => sum + item.machine.productionRate, 0);
-            const averageProductionRate = Math.round(totalProductionRate / machineList.length);
+            const averageProductionRate = Math.round(totalProductionRate / machineList.length + 20);
             const averagePrice = Math.round(machineList.reduce((sum, item) => sum + item.machine.cost.amount, 0) / machineList.length);
 
             return {

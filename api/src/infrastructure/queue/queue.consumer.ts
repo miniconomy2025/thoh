@@ -111,7 +111,7 @@ export const criticalMessageHandler = async (message: CriticalQueueMessage) => {
                 break;
             }
             console.log(process.env.RETAIL_BANK_API_URL , JSON.stringify({salaryCents}));
-            const createAccountResponse = await fetch(process.env.RETAIL_BANK_API_URL + '/accounts', {
+            const createAccountResponse = await fetch(process.env.RETAIL_BANK_API_URL + 'accounts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json',
                 'Client-Id': 'thoh',  },

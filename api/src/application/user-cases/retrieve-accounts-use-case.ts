@@ -8,7 +8,7 @@ export class RetrieveAccountsUseCase {
     async execute(): Promise<Response | undefined> {
       
         try{
-            const response = await fetch("https://commercial-bank-api.projects.bbdgrad.com/simulation/accounts/", {
+            const response = await fetch("https://commercial-bank-api.subspace.site/api/simulation/accounts/", {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
