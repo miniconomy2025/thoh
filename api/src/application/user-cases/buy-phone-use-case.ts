@@ -28,7 +28,7 @@ export class BuyPhoneUseCase {
   private async createOrder(person: Person, model: string, baseUrl?: string): Promise<boolean> {
     const body = {
       account_number: person.accountNumber,
-      items: [{ name: model, quantity: 1 }]
+      items: [{ model: model, quantity: 1 }]
     };
 
     try {
