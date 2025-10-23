@@ -64,7 +64,7 @@ export class StartSimulationUseCase {
         const vehicleNameToId = new Map(vehicleStatics.map(v => [v.name, v.id]));
 
         const { rawMaterialsMarket, machinesMarket, trucksMarket } = this.createSeededMarkets(materialNameToId, machineNameToId, vehicleNameToId);
-        const people = this.createSeededPopulation(50, { amount: 1000, currency: 'ZAR' }, simulationId, phoneStatics);
+        const people = this.createSeededPopulation(50, { amount: 100000, currency: 'ZAR' }, simulationId, phoneStatics);
 
         const phonesToSave = people
           .map(p => p.phone)
